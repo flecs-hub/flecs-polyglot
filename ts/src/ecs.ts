@@ -221,7 +221,6 @@ export class Query {
     }
 
     next(): boolean {
-        
        return flecs_core._flecs_query_next(this.iterPtr)
     }
 

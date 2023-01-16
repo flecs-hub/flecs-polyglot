@@ -139,5 +139,5 @@ pub unsafe fn flecs_query_iter_count(iter: *mut ecs_iter_t) -> i32 {
 #[no_mangle]
 pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t) -> *mut *mut c_void {
     let it = &mut * iter;
-    it.ptrs as *mut *mut c_void;
+    it.ptrs as *mut *mut c_void
 }
