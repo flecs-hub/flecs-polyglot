@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist",
+        "sourceMap": true,
+        "noImplicitAny": false,
+        "moduleResolution": "node",
+        "module": "es2020",
+        "target": "es2020",
+        "declaration": true,
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
+        "esModuleInterop": true,
+        "lib": [
+          "ES2017",
+          "dom"
+        ],
+        "types": [
+          "node"
+        ],
+        "skipLibCheck": true,
+        "baseUrl": "./src",
+        "rootDir": "./",
+    }
+}
