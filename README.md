@@ -4,7 +4,7 @@
 ## Introduction
 A universal scripting API for [flecs](https://github.com/SanderMertens/flecs) on all languages that compile to WebAssembly. This is achieved through WebAssembly module linking (on the web through Emscripten, on native through Wasmtime), or native dynamic linking for a zero runtime option.
 
-[flecs](https://github.com/SanderMertens/flecs) is a blazing-fast, cache-friendly, portable, entity component system written in C that supports relationships, hierarchies and more! 
+[flecs](https://github.com/SanderMertens/flecs) is a blazing-fast, cache-friendly, portable, entity component system written in C that supports relationships, hierarchies, and more! 
 
 ## Goals
 Provide one universal set of scripting bindings using powerful technologies such as WebAssembly with minimal overhead during interop with the host program. Fast memory mapped access to C struct data is used instead of reflection. 
