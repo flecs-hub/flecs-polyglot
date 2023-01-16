@@ -12,7 +12,7 @@ Provide one universal set of scripting bindings using powerful technologies such
 # Supported Platforms
 - Web
 - Mobile
-- Desktop (Windows / Linux / OSX)
+- Desktop (Windows / Linux / OS X)
 
 ## Supported Languages
 - Rust
@@ -27,4 +27,4 @@ Provide one universal set of scripting bindings using powerful technologies such
 - Swift (Not yet)
 - Haxe (Not yet)
 - Rhai (Not yet)
-- QuickJS & v8 Engine (Not yet)
+- Go / TinyGo (Not yet)
