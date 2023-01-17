@@ -1,4 +1,4 @@
-import { flecs_core, Pointer, u32 } from './emscripten'
+import { flecs_core, Pointer } from './emscripten'
 import SparseMap from './utils/sparse-map'
 
 export enum Type {
@@ -104,6 +104,10 @@ export class Entity {
             // Set component pointer from C API so that we can
             // later get and modify it's struct members
             flecsComponent.ptr = flecs_core._flecs_entity_add_component(this.id, flecsComponent.id)
+
+            
+            flecs_core._flecs_component_set_member_float(flecsComponent.ptr, 0, 351)
+            flecs_core._flecs_component_set_member_float(flecsComponent.ptr, 4, 999)
         }
     }
 
@@ -201,18 +205,22 @@ export class World {
     static query(component: typeof Component): Query {
         if(!ComponentIDCache.has(component.name))
             throw new Error(`Component ${component.name} has not been registered`)
-        
+
+        const indexes = new Array<ComponentName>()
+        indexes.push(component.name)
         const id = ComponentIDCache.get(component.name)
-        return new Query(flecs_core._flecs_query_create(id))
+        return new Query(flecs_core._flecs_query_create(id), indexes)
     }
 }
 
 export class Query {
     public ptr: Pointer = 0
     public iterPtr: Pointer = 0
+    public indexes: Array<ComponentName> = new Array<ComponentName>()
     
-    constructor(ptr: Pointer) {
+    constructor(ptr: Pointer, indexes: Array<ComponentName>) {
         this.ptr = ptr
+        this.indexes = indexes
     }
 
     iter(): Pointer {
@@ -226,14 +234,16 @@ export class Query {
 
     field<T extends Component>(componentType: new() => T): Array<T> {
         const count = flecs_core._flecs_query_iter_count(this.iterPtr)
-        const componentsPtr = flecs_core._flecs_query_iter_ptrs(this.iterPtr)
-        const ptrIndex = (componentsPtr / 4)
-        const componentPtrs = flecs_core.HEAPU32.subarray(ptrIndex, ptrIndex + count)
+        const componentIndex = this.indexes.indexOf(componentType.name)
+        
+        // Get iter array ptr which is an array of array of component pointers
+        const iterArrayPtr = flecs_core._flecs_query_iter_ptrs(this.iterPtr, componentIndex)
 
+        // Create array of components
         const components = new Array<T>()
-        for (const ptr of componentPtrs) {
+        for (let i = 0; i < count; i++) {
             const component = World.createComponent(componentType)
-            component.ptr = ptr
+            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i)
             components.push(component)
         }
 

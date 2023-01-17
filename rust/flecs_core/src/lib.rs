@@ -41,7 +41,7 @@ pub enum Type {
 
 static mut WORLD: Option<*mut ecs_world_t> = None;
 
-fn main() {
+pub fn init() {
     // Create a flecs world
     unsafe { WORLD = Some(ecs_init()) }
 }
@@ -88,8 +88,8 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let world = *WORLD.as_mut().unwrap_unchecked();
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
-
     let component_ptr = ecs_get_mut_id(world, entity, component);
+    println!("component_ptr: {:p}, entity: {}, component: {}", component_ptr, entity, component);
     component_ptr
 }
 
@@ -113,6 +113,10 @@ pub unsafe fn flecs_query_create(id: u32) -> *mut ecs_query_t {
     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
     term.id = id.try_into().unwrap_unchecked();
     desc.filter.terms[0] = term;
+    let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+    // TODO: Remove this hardcoded value
+    term.id = 485;
+    desc.filter.terms[1] = term;
     let query: *mut ecs_query_t = ecs_query_init(world, &desc);
     query
 }
@@ -132,12 +136,32 @@ pub unsafe fn flecs_query_iter(query: *mut ecs_query_t) -> *mut ecs_iter_t {
 
 #[no_mangle]
 pub unsafe fn flecs_query_iter_count(iter: *mut ecs_iter_t) -> i32 {
-    let it = &mut * iter;
-    it.count
+    (*iter).count
+}
+
+// This is for the guest to get the pointers to the components based on the index 
+// of the component when the query was created
+// That's why there is an array of arrays. The first array is the first component type as an array of pointers
+#[no_mangle]
+pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t, component_query_index: u32) -> *mut c_void {
+    *(*iter).ptrs
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct Position {
+    x: f32,
+    y: f32
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t) -> *mut *mut c_void {
-    let it = &mut * iter;
-    it.ptrs as *mut *mut c_void
+pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut Position, component_index: u32) -> &'static Position {
+    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, 5 as usize);
+    for (index, ptr) in ptrs_slice.iter().enumerate() {
+        let ptr = *ptr;
+        println!("ptr: {:?}, index: {}", ptr, index);
+    }
+    // ptrs_slice[component_index as usize]
+    // component_array_ptr
+    &ptrs_slice[component_index as usize]
 }

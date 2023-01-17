@@ -1,5 +1,5 @@
-import { f32 } from './emscripten'
-import { Type, Component, Entity, World } from './ecs'
+import { f32 } from 'flecs/emscripten'
+import { Type, Component, Entity, World } from 'flecs/ecs'
 
 // Define component
 class Position extends Component {
@@ -7,8 +7,14 @@ class Position extends Component {
     public y: f32 = 0
 }
 
+class Velocity extends Component {
+    public x: f32 = 0
+    public y: f32 = 0
+}
+
 // Register component
 World.registerComponent(new Position({ x: Type.F32, y: Type.F32 }))
+World.registerComponent(new Velocity({ x: Type.F32, y: Type.F32 }))
 
 // Create entities
 const entities = 5
