@@ -34,7 +34,7 @@ export interface CoreAPI {
     _flecs_query_iter: (query: Pointer) => Pointer,
     _flecs_query_iter_ptrs: (iter: Pointer, component_query_index: u32) => Pointer,
     _flecs_query_iter_count: (iter: Pointer) => i32,
-    _flecs_query_iter_component: (component_array_ptr: Pointer, component_index: u32) => Pointer,
+    _flecs_query_iter_component: (component_array_ptr: Pointer, component_index: u32, count: u32) => Pointer,
 }
 
 export const flecs_core: EmscriptenModuleExtended & CoreAPI = window['flecs_core']

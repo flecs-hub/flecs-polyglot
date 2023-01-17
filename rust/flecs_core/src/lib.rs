@@ -89,7 +89,6 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     let component_ptr = ecs_get_mut_id(world, entity, component);
-    println!("component_ptr: {:p}, entity: {}, component: {}", component_ptr, entity, component);
     component_ptr
 }
 
@@ -155,13 +154,7 @@ pub struct Position {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut Position, component_index: u32) -> &'static Position {
-    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, 5 as usize);
-    for (index, ptr) in ptrs_slice.iter().enumerate() {
-        let ptr = *ptr;
-        println!("ptr: {:?}, index: {}", ptr, index);
-    }
-    // ptrs_slice[component_index as usize]
-    // component_array_ptr
+pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut Position, component_index: u32, count: u32) -> &'static Position {
+    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize);
     &ptrs_slice[component_index as usize]
 }

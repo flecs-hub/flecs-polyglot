@@ -104,10 +104,6 @@ export class Entity {
             // Set component pointer from C API so that we can
             // later get and modify it's struct members
             flecsComponent.ptr = flecs_core._flecs_entity_add_component(this.id, flecsComponent.id)
-
-            
-            flecs_core._flecs_component_set_member_float(flecsComponent.ptr, 0, 351)
-            flecs_core._flecs_component_set_member_float(flecsComponent.ptr, 4, 999)
         }
     }
 
@@ -239,11 +235,17 @@ export class Query {
         // Get iter array ptr which is an array of array of component pointers
         const iterArrayPtr = flecs_core._flecs_query_iter_ptrs(this.iterPtr, componentIndex)
 
+        /*
+        TODO: Convert array of component pointers to JS array
+        const ptrIndex = iterArrayPtr / 4
+        const componentPtrs = flecs_core.HEAPU32.subarray(ptrIndex, ptrIndex + count)
+        */
+
         // Create array of components
         const components = new Array<T>()
         for (let i = 0; i < count; i++) {
             const component = World.createComponent(componentType)
-            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i)
+            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i, count)
             components.push(component)
         }
 
