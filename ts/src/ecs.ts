@@ -117,6 +117,7 @@ export class World {
         const component = new componentType()
         const cachedComponentType = ComponentsTypeCache.get(ComponentIDCache.get(componentType.name))
         Object.assign(component, cachedComponentType)
+
         // Iterate through component and map getters and setters
         // to change the values of thes struct in the C API
         for (const [key, value] of Object.entries(component)) {
@@ -149,6 +150,7 @@ export class World {
         }
         return component
     }
+
     static registerComponent<T extends Component>(component: T) {
         // Create C data
         // Name of the component
@@ -230,22 +232,13 @@ export class Query {
 
     field<T extends Component>(componentType: new() => T): Array<T> {
         const count = flecs_core._flecs_query_iter_count(this.iterPtr)
-        const componentIndex = this.indexes.indexOf(componentType.name)
+        const termIndex = this.indexes.indexOf(componentType.name)
         
-        // Get iter array ptr which is an array of array of component pointers
-        const iterArrayPtr = flecs_core._flecs_query_iter_ptrs(this.iterPtr, componentIndex)
-
-        /*
-        TODO: Convert array of component pointers to JS array
-        const ptrIndex = iterArrayPtr / 4
-        const componentPtrs = flecs_core.HEAPU32.subarray(ptrIndex, ptrIndex + count)
-        */
-
         // Create array of components
         const components = new Array<T>()
         for (let i = 0; i < count; i++) {
             const component = World.createComponent(componentType)
-            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i, count)
+            component.ptr = flecs_core._flecs_query_iter_field(this.iterPtr, i, termIndex)
             components.push(component)
         }
 

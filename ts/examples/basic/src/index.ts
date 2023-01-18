@@ -20,20 +20,25 @@ World.registerComponent(new Velocity({ x: Type.F32, y: Type.F32 }))
 const entities = 5
 for (let i = 0; i < entities; i++) {
     const entity = new Entity()
-    entity.add(new Position())
+    entity.add(new Position(), new Velocity())
 }
 
 // Query
 const query = World.query(Position)
-// Start next cycle of iteration
-query.iter()
-// Iterate
-while (query.next()) {
-    const positions = query.field(Position)
-    // Iterate through postions
-    positions.forEach((position: Position) => {
-        // Modify position
-        position.x = 10
-        position.y = 10
-    })
-}
+setInterval(() => {
+    // Start next cycle of iteration
+    query.iter()
+    // Iterate
+    while (query.next()) {
+        const positions = query.field(Position)
+        
+        console.log(positions)
+
+        // Iterate through postions
+        positions.forEach((position: Position) => {
+            // Modify position
+            position.x += 5
+            position.y += 5
+        })
+    }
+}, 16)
