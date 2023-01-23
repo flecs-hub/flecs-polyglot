@@ -64,24 +64,22 @@ export const checkType = (value: JsPrimitive): Type => {
 }
 
 // ComponentID -> ComponentType
-const ComponentsTypeCache = new SparseMap<Component>(10_000)
+const ComponentsTypeCache = new SparseMap<ComponentType>(10_000)
 // ComponentName -> ComponentID
 const ComponentIDCache = new Map<ComponentName, ComponentID>()
 
-// TODO: Make a seperate class for ComponentType
-// and seperate it from queryable component instances
+export class ComponentType {
+    public id: EntityID = 0
+    public types: Types = {}
+}
+
 export class Component {
     public id: EntityID = 0
     public ptr: Pointer = 0
-    public types: Types = {}
     public typesInfo: TypesInfo = {}
 
     static numOfInternalFields = 4
-    static isMembers = (key: string) => key !== 'id' && key !== 'ptr' && key !== 'types' && key !== 'typesInfo'
-
-    constructor(types?: Types) {
-        this.types = types
-    }
+    static isMembers = (key: string) => key !== 'id' && key !== 'ptr' && key !== 'typesInfo' && key !== 'types'
 }
 
 export class Entity {
@@ -99,7 +97,7 @@ export class Entity {
                 Object.assign(component, ComponentsTypeCache.get(ComponentIDCache.get(component.constructor.name)))
             :
                 // Create new component with type info
-                World.registerComponent(component)
+                World.registerComponent(Object.getPrototypeOf(component).constructor)
             
             // Set component pointer from C API so that we can
             // later get and modify it's struct members
@@ -151,7 +149,8 @@ export class World {
         return component
     }
 
-    static registerComponent<T extends Component>(component: T) {
+    static registerComponent(_component: typeof Component, types: Types = {}) {
+        const component = Object.assign(new ComponentType(), new _component())
         // Create C data
         // Name of the component
         const cName = flecs_core.allocateUTF8(component.constructor.name)
@@ -170,7 +169,7 @@ export class World {
                 // Create type info for member
                 component.typesInfo[key] = {
                     // If types have not been defined, reflect the types from the JavaScript values
-                    type: Object.keys(component.types).length === 0 ? checkType(value) : component.types[key],
+                    type: types[key] ? types[key] : checkType(value),
                     cName,
                     index: i - Component.numOfInternalFields,
                     offset
@@ -191,8 +190,12 @@ export class World {
         component.id = flecs_core._flecs_component_create(cName, buffer, cNames.length, buffer, cNames.length)
         
         // Update caches
-        ComponentIDCache.set(component.constructor.name, component.id)
+        ComponentIDCache.set(_component.name, component.id)
         ComponentsTypeCache.set(component.id, component)
+
+        // Free memory
+        flecs_core._m_free(cName)
+        flecs_core._m_free(buffer)
 
         return component
     }

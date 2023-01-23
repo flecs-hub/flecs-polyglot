@@ -19,6 +19,7 @@ pub struct ecs_struct_desc_t {
 }
 
 extern "C" {
+    pub fn free(ptr: *mut c_void);
     pub fn ecs_struct_init(world: *mut ecs_world_t, desc: *const ecs_struct_desc_t)
         -> ecs_entity_t;
 }
@@ -45,6 +46,7 @@ pub fn init() {
     // Create a flecs world
     unsafe { WORLD = Some(ecs_init()) }
 }
+
 
 #[no_mangle]
 pub unsafe fn flecs_component_create(component_name: *const c_char, member_names: *const *const c_char, member_names_size: u32, member_types: *const *const c_char, member_types_size: u32) -> ecs_entity_t  {
@@ -73,6 +75,13 @@ pub unsafe fn flecs_component_create(component_name: *const c_char, member_names
     }
     
     ecs_struct_init(world, &struct_desc)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get(name: *const c_char) -> ecs_entity_t {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let component_entity: ecs_entity_t = ecs_lookup(world, name);
+    component_entity
 }
 
 #[no_mangle]
@@ -168,4 +177,9 @@ pub unsafe fn flecs_query_iter_field(iter: *mut ecs_iter_t, component_ptr_index:
     let entity = (*iter).entities.offset((component_ptr_index as usize * std::mem::size_of::<u8>()).try_into().unwrap());
     let component = (*iter).ids.offset((term_index as usize * std::mem::size_of::<ecs_entity_t>()).try_into().unwrap());
     ecs_get_mut_id(world, *entity, *component)
+}
+
+#[no_mangle]
+pub unsafe fn m_free(ptr: *mut c_void) {
+    free(ptr as *mut c_void)
 }

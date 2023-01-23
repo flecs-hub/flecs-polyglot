@@ -13,8 +13,8 @@ class Velocity extends Component {
 }
 
 // Register component
-World.registerComponent(new Position({ x: Type.F32, y: Type.F32 }))
-World.registerComponent(new Velocity({ x: Type.F32, y: Type.F32 }))
+World.registerComponent(Position, { x: Type.F32, y: Type.F32 })
+World.registerComponent(Velocity, { x: Type.F32, y: Type.F32 })
 
 // Create entities
 const entities = 5
@@ -35,7 +35,7 @@ setInterval(() => {
         console.log(positions)
 
         // Iterate through postions
-        positions.forEach((position: Position) => {
+        positions.forEach((position: Position) => { 
             // Modify position
             position.x += 5
             position.y += 5
