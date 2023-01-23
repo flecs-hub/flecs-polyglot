@@ -122,8 +122,7 @@ pub unsafe fn flecs_query_create(id: u32) -> *mut ecs_query_t {
     term.id = id.try_into().unwrap_unchecked();
     desc.filter.terms[0] = term;
     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
-    // TODO: Remove this hardcoded value
-    term.id = 485;
+    term.id = id.try_into().unwrap();
     desc.filter.terms[1] = term;
     let query: *mut ecs_query_t = ecs_query_init(world, &desc);
     query
@@ -150,12 +149,20 @@ pub unsafe fn flecs_query_iter_count(iter: *mut ecs_iter_t) -> i32 {
 // This is for the guest to get the pointers to the components based on the index 
 // of the component when the query was created
 // That's why there is an array of arrays. The first array is the first component type as an array of pointers
-/* 
+
 #[no_mangle]
-pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t, component_query_index: u32) -> *mut c_void {
-    *(*iter).ptrs
+pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t, component_query_index: u32) -> *mut *mut c_void {
+    (*iter).ptrs
 }
 
+#[no_mangle]
+pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut u8, component_index: u32, count: u32) -> *const u8 {
+    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize * 8);
+    let ptr = &ptrs_slice[(component_index as usize) * 8];
+    ptr as *const u8
+}
+
+/* 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Position {
@@ -163,14 +170,7 @@ pub struct Position {
     y: f32
 }
 
-#[no_mangle]
-pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut Position, component_index: u32, count: u32) -> &'static Position {
-    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize);
-    &ptrs_slice[component_index as usize]
-}
-*/
-
-// Temporary workaround to getting component pointers, has more overhead
+// Temporary workaround to getting component pointers, has more overhead due to ecs_get_mut() lookup
 #[no_mangle]
 pub unsafe fn flecs_query_iter_field(iter: *mut ecs_iter_t, component_ptr_index: ecs_entity_t, term_index: ecs_entity_t) -> *mut c_void {
     let world = *WORLD.as_mut().unwrap_unchecked();
@@ -178,6 +178,7 @@ pub unsafe fn flecs_query_iter_field(iter: *mut ecs_iter_t, component_ptr_index:
     let component = (*iter).ids.offset((term_index as usize * std::mem::size_of::<ecs_entity_t>()).try_into().unwrap());
     ecs_get_mut_id(world, *entity, *component)
 }
+*/
 
 #[no_mangle]
 pub unsafe fn m_free(ptr: *mut c_void) {

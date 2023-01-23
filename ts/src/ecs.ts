@@ -236,12 +236,20 @@ export class Query {
     field<T extends Component>(componentType: new() => T): Array<T> {
         const count = flecs_core._flecs_query_iter_count(this.iterPtr)
         const termIndex = this.indexes.indexOf(componentType.name)
-        
+
+        /// Get iter array ptr which is an array of array of component pointers
+        const iterPtrsPtr = flecs_core._flecs_query_iter_ptrs(this.iterPtr, termIndex)
+        const ptrIndex = (iterPtrsPtr / 4)
+        // Convert to JS array
+        const iterArrayPtr = flecs_core.HEAPU32[ptrIndex]
+
         // Create array of components
         const components = new Array<T>()
         for (let i = 0; i < count; i++) {
             const component = World.createComponent(componentType)
-            component.ptr = flecs_core._flecs_query_iter_field(this.iterPtr, i, termIndex)
+            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i, count)
+            // Temporary solution with more overhead due to ecs_get_mut() lookup
+            // component.ptr = flecs_core._flecs_query_iter_field(this.iterPtr, i, termIndex)
             components.push(component)
         }
 
