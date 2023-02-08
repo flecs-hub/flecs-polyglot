@@ -115,15 +115,21 @@ pub unsafe fn flecs_component_get_member_float(component_ptr: *mut c_void, offse
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_create(id: u32) -> *mut ecs_query_t {
+pub unsafe fn flecs_query_create(id: *mut i32, length: i32) -> *mut ecs_query_t {
+    // Slice from raw parts
+    let ids = std::slice::from_raw_parts(id as *mut i32, length as usize);
+
     let world = *WORLD.as_mut().unwrap_unchecked();
     let mut desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
-    let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
-    term.id = id.try_into().unwrap_unchecked();
-    desc.filter.terms[0] = term;
-    let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
-    term.id = id.try_into().unwrap();
-    desc.filter.terms[1] = term;
+    
+
+    // Iterate over ids 
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = (*id).try_into().unwrap();
+        desc.filter.terms[index] = term;
+    }
+
     let query: *mut ecs_query_t = ecs_query_init(world, &desc);
     query
 }

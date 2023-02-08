@@ -113,7 +113,7 @@ export class Entity {
 export class World {
     static createComponent<T extends Component>(componentType: new() => T): T {
         const component = new componentType()
-        const cachedComponentType = ComponentsTypeCache.get(ComponentIDCache.get(componentType.name))
+        const cachedComponentType = ComponentsTypeCache.get(ComponentIDCache.get(componentType.name)) 
         Object.assign(component, cachedComponentType)
 
         // Iterate through component and map getters and setters
@@ -153,7 +153,7 @@ export class World {
         const component = Object.assign(new ComponentType(), new _component())
         // Create C data
         // Name of the component
-        const cName = flecs_core.allocateUTF8(component.constructor.name)
+        const cName = flecs_core.allocateUTF8(_component.name)
         const members = Object.entries(component)
         // Names of component members
         const cNames = new Uint32Array(members.length - Component.numOfInternalFields)
@@ -203,14 +203,32 @@ export class World {
     // TODO: Turn this into variadic function
     // and pass in array instead of single
     // component id
-    static query(component: typeof Component): Query {
-        if(!ComponentIDCache.has(component.name))
-            throw new Error(`Component ${component.name} has not been registered`)
-
+    static query(...components: (typeof Component)[]): Query {
+        const componentIds = new Array<number>()
         const indexes = new Array<ComponentName>()
-        indexes.push(component.name)
-        const id = ComponentIDCache.get(component.name)
-        return new Query(flecs_core._flecs_query_create(id), indexes)
+
+        for (const component  of components) {
+            if(!ComponentIDCache.has(component.name))
+                throw new Error(`Component ${component.name} has not been registered`)
+    
+            const id = ComponentIDCache.get(component.name)
+            componentIds.push(id)
+            indexes.push(component.name)
+        }
+
+        const BYTES_PER_ELEMENT = 4
+        // Allocate array of component ids
+        const buffer = flecs_core._malloc(componentIds.length * BYTES_PER_ELEMENT)
+        // Write array of component ids to memory
+        flecs_core.HEAPU32.set(componentIds, buffer / BYTES_PER_ELEMENT)
+
+        // Create query
+        const query = new Query(flecs_core._flecs_query_create(buffer, componentIds.length), indexes)
+
+        // Free memory
+        flecs_core._m_free(buffer)
+        
+        return query
     }
 }
 

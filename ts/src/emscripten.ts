@@ -30,14 +30,12 @@ export interface CoreAPI {
     _flecs_component_get_member_float: (component_ptr: Pointer, offset: u32) => f64,
     _flecs_entity_create: () => Pointer,
     _flecs_entity_add_component: (entity: EntityID, component: EntityID) => Pointer,
-    _flecs_query_create: (component: EntityID) => Pointer,
+    _flecs_query_create: (components: Pointer, componentsSize: i32) => Pointer,
     _flecs_query_next: (iter: Pointer) => boolean,
     _flecs_query_iter: (query: Pointer) => Pointer,
     _flecs_query_iter_count: (iter: Pointer) => i32,
     _flecs_query_iter_ptrs: (iter: Pointer, component_query_index: u32) => Pointer,
     _flecs_query_iter_component: (component_array_ptr: Pointer, component_index: u32, count: u32) => Pointer,
-    // Temporary solution with more overhead due to ecs_get_mut() lookup
-    // _flecs_query_iter_field: (iter: Pointer, componentPtrIndex: number, termIndex: EntityID) => Pointer
 }
 
 export const flecs_core: EmscriptenModuleExtended & CoreAPI = window['flecs_core']
