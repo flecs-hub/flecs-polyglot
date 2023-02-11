@@ -47,9 +47,27 @@ pub fn init() {
     unsafe { WORLD = Some(ecs_init()) }
 }
 
+unsafe fn get_member_type(member_type: u8) -> u64 {
+    match member_type {
+        0 => FLECS__Eecs_u8_t,
+        1 => FLECS__Eecs_u16_t,
+        2 => FLECS__Eecs_u32_t,
+        3 => FLECS__Eecs_u64_t,
+        4 => FLECS__Eecs_i8_t,
+        5 => FLECS__Eecs_i16_t,
+        6 => FLECS__Eecs_i32_t,
+        7 => FLECS__Eecs_i64_t,
+        8 => FLECS__Eecs_f32_t,
+        9 => FLECS__Eecs_f64_t,
+        10 => FLECS__Eecs_bool_t,
+        11 => FLECS__Eecs_string_t,
+        _ => FLECS__Eecs_u8_t
+    }
+}
+
 
 #[no_mangle]
-pub unsafe fn flecs_component_create(component_name: *const c_char, member_names: *const *const c_char, member_names_size: u32, member_types: *const *const c_char, member_types_size: u32) -> ecs_entity_t  {
+pub unsafe fn flecs_component_create(component_name: *const c_char, member_names: *const *const c_char, member_names_size: u32, member_types: *const *const u8, member_types_size: u32) -> ecs_entity_t  {
     let world = *WORLD.as_mut().unwrap_unchecked();
 
     // Create component entity description
@@ -64,13 +82,14 @@ pub unsafe fn flecs_component_create(component_name: *const c_char, member_names
     struct_desc.members = [member; 32usize];
 
     let member_names = std::slice::from_raw_parts(member_names as *const u32, member_names_size as usize);
+    let member_types = std::slice::from_raw_parts(member_types as *const u8, member_names_size as usize);
     // Iterate through member names
     for (index, member_name) in member_names.iter().enumerate() {
         let member_name = *member_name as *const c_char;
         // Create component member
         let mut member: ecs_member_t = MaybeUninit::zeroed().assume_init();
         member.name = member_name;
-        member.type_ = FLECS__Eecs_f32_t;
+        member.type_ = get_member_type(member_types[index]);
         struct_desc.members[index] = member;
     }
     
@@ -99,19 +118,6 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     let component_ptr = ecs_get_mut_id(world, entity, component);
     component_ptr
-}
-
-#[no_mangle]
-pub unsafe fn flecs_component_set_member_float(component_ptr: *mut c_void, offset: u32, value: f32) {
-    let member_ptr = component_ptr.offset(offset as isize) as *mut f32;
-    *member_ptr = value;
-}
-
-#[no_mangle]
-pub unsafe fn flecs_component_get_member_float(component_ptr: *mut c_void, offset: u32) -> f32 {
-    let member_ptr = component_ptr.offset(offset as isize) as *mut f32;
-    let member_value: f32 = *member_ptr;
-    member_value
 }
 
 #[no_mangle]
@@ -168,23 +174,135 @@ pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut u8, component
     ptr as *const u8
 }
 
-/* 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct Position {
-    x: f32,
-    y: f32
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_u8(component_ptr: *mut c_void, offset: u32, value: u8) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u8;
+    *member_ptr = value;
 }
 
-// Temporary workaround to getting component pointers, has more overhead due to ecs_get_mut() lookup
 #[no_mangle]
-pub unsafe fn flecs_query_iter_field(iter: *mut ecs_iter_t, component_ptr_index: ecs_entity_t, term_index: ecs_entity_t) -> *mut c_void {
-    let world = *WORLD.as_mut().unwrap_unchecked();
-    let entity = (*iter).entities.offset((component_ptr_index as usize * std::mem::size_of::<u8>()).try_into().unwrap());
-    let component = (*iter).ids.offset((term_index as usize * std::mem::size_of::<ecs_entity_t>()).try_into().unwrap());
-    ecs_get_mut_id(world, *entity, *component)
+pub unsafe fn flecs_component_get_member_u8(component_ptr: *mut c_void, offset: u32) -> u8 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u8;
+    let member_value: u8 = *member_ptr;
+    member_value
 }
-*/
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_u16(component_ptr: *mut c_void, offset: u32, value: u16) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u16;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_u16(component_ptr: *mut c_void, offset: u32) -> u16 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u16;
+    let member_value: u16 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_u32(component_ptr: *mut c_void, offset: u32, value: u32) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u32;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_u32(component_ptr: *mut c_void, offset: u32) -> u32 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u32;
+    let member_value: u32 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_u64(component_ptr: *mut c_void, offset: u32, value: u64) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u64;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_u64(component_ptr: *mut c_void, offset: u32) -> u64 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut u64;
+    let member_value: u64 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_i8(component_ptr: *mut c_void, offset: u32, value: i8) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i8;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_i8(component_ptr: *mut c_void, offset: u32) -> i8 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i8;
+    let member_value: i8 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_i16(component_ptr: *mut c_void, offset: u32, value: i16) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i16;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_i16(component_ptr: *mut c_void, offset: u32) -> i16 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i16;
+    let member_value: i16 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_i32(component_ptr: *mut c_void, offset: u32, value: i32) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i32;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_i32(component_ptr: *mut c_void, offset: u32) -> i32 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i32;
+    let member_value: i32 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_i64(component_ptr: *mut c_void, offset: u32, value: i64) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i64;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_i64(component_ptr: *mut c_void, offset: u32) -> i64 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut i64;
+    let member_value: i64 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_f32(component_ptr: *mut c_void, offset: u32, value: f32) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut f32;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_f32(component_ptr: *mut c_void, offset: u32) -> f32 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut f32;
+    let member_value: f32 = *member_ptr;
+    member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_f64(component_ptr: *mut c_void, offset: u32, value: f64) {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut f64;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_f64(component_ptr: *mut c_void, offset: u32) -> f64 {
+    let member_ptr = component_ptr.offset(offset as isize) as *mut f64;
+    let member_value: f64 = *member_ptr;
+    member_value
+}
 
 #[no_mangle]
 pub unsafe fn m_free(ptr: *mut c_void) {

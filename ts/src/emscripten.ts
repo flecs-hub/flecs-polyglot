@@ -26,8 +26,6 @@ export interface EmscriptenModuleExtended extends EmscriptenModule {
 
 export interface CoreAPI {
     _flecs_component_create: (name: Pointer, memberNames: Pointer, memberNamesSize: u32, memberValues: Pointer, memberValuesSize: u32) => Pointer,
-    _flecs_component_set_member_float: (component_ptr: Pointer, offset: u32, value: f32) => void,
-    _flecs_component_get_member_float: (component_ptr: Pointer, offset: u32) => f64,
     _flecs_entity_create: () => Pointer,
     _flecs_entity_add_component: (entity: EntityID, component: EntityID) => Pointer,
     _flecs_query_create: (components: Pointer, componentsSize: i32) => Pointer,
@@ -36,6 +34,26 @@ export interface CoreAPI {
     _flecs_query_iter_count: (iter: Pointer) => i32,
     _flecs_query_iter_ptrs: (iter: Pointer, component_query_index: u32) => Pointer,
     _flecs_query_iter_component: (component_array_ptr: Pointer, component_index: u32, count: u32) => Pointer,
+    _flecs_component_set_member_u8: (component_ptr: Pointer, offset: u32, value: u8) => void,
+    _flecs_component_get_member_u8: (component_ptr: Pointer, offset: u32) => u8,
+    _flecs_component_set_member_u16: (component_ptr: Pointer, offset: u32, value: u16) => void,
+    _flecs_component_get_member_u16: (component_ptr: Pointer, offset: u32) => u8,
+    _flecs_component_set_member_u32: (component_ptr: Pointer, offset: u32, value: u32) => void,
+    _flecs_component_get_member_u32: (component_ptr: Pointer, offset: u32) => u8,
+    _flecs_component_set_member_u64: (component_ptr: Pointer, offset: u32, value: u64) => void,
+    _flecs_component_get_member_u64: (component_ptr: Pointer, offset: u32) => u8,
+    _flecs_component_set_member_i8: (component_ptr: Pointer, offset: u32, value: i8) => void,
+    _flecs_component_get_member_i8: (component_ptr: Pointer, offset: u32) => i8,
+    _flecs_component_set_member_i16: (component_ptr: Pointer, offset: u32, value: i16) => void,
+    _flecs_component_get_member_i16: (component_ptr: Pointer, offset: u32) => i8,
+    _flecs_component_set_member_i32: (component_ptr: Pointer, offset: u32, value: i32) => void,
+    _flecs_component_get_member_i32: (component_ptr: Pointer, offset: u32) => i8,
+    _flecs_component_set_member_i64: (component_ptr: Pointer, offset: u32, value: i64) => void,
+    _flecs_component_get_member_i64: (component_ptr: Pointer, offset: u32) => i8,
+    _flecs_component_set_member_f32: (component_ptr: Pointer, offset: u32, value: f32) => void,
+    _flecs_component_get_member_f32: (component_ptr: Pointer, offset: u32) => f32,
+    _flecs_component_set_member_f64: (component_ptr: Pointer, offset: u32, value: f64) => void,
+    _flecs_component_get_member_f64: (component_ptr: Pointer, offset: u32) => f64,
 }
 
 export const flecs_core: EmscriptenModuleExtended & CoreAPI = window['flecs_core']

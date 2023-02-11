@@ -125,8 +125,26 @@ export class World {
                         if(component.ptr) {
                             const typesInfo = component.typesInfo[key]
                             switch(typesInfo.type) {
+                                case Type.U8:
+                                    return flecs_core._flecs_component_get_member_u8(component.ptr, typesInfo.offset)
+                                case Type.U16:
+                                    return flecs_core._flecs_component_get_member_u16(component.ptr, typesInfo.offset)
+                                case Type.U32:
+                                    return flecs_core._flecs_component_get_member_u32(component.ptr, typesInfo.offset)
+                                case Type.U64:
+                                    return flecs_core._flecs_component_get_member_u64(component.ptr, typesInfo.offset)
+                                case Type.I8:
+                                    return flecs_core._flecs_component_get_member_i8(component.ptr, typesInfo.offset)
+                                case Type.I16:
+                                    return flecs_core._flecs_component_get_member_i16(component.ptr, typesInfo.offset)
+                                case Type.I32:
+                                    return flecs_core._flecs_component_get_member_i32(component.ptr, typesInfo.offset)
+                                case Type.I64:
+                                    return flecs_core._flecs_component_get_member_i64(component.ptr, typesInfo.offset)
                                 case Type.F32:
-                                    return flecs_core._flecs_component_get_member_float(component.ptr, typesInfo.offset)
+                                    return flecs_core._flecs_component_get_member_f32(component.ptr, typesInfo.offset)
+                                case Type.F64:
+                                    return flecs_core._flecs_component_get_member_f64(component.ptr, typesInfo.offset)
                             }
                         }
                         return value
@@ -135,9 +153,27 @@ export class World {
                         if(component.ptr) {
                             const typesInfo = component.typesInfo[key]
                             switch(typesInfo.type) {
+                                case Type.U8:
+                                    flecs_core._flecs_component_set_member_u8(component.ptr, typesInfo.offset, value)
+                                case Type.U16:
+                                    flecs_core._flecs_component_set_member_u16(component.ptr, typesInfo.offset, value)
+                                case Type.U32:
+                                    flecs_core._flecs_component_set_member_u32(component.ptr, typesInfo.offset, value)
+                                case Type.U64:
+                                    flecs_core._flecs_component_set_member_u64(component.ptr, typesInfo.offset, value)
+                                case Type.I8:
+                                    flecs_core._flecs_component_set_member_i8(component.ptr, typesInfo.offset, value)
+                                case Type.I16:
+                                    flecs_core._flecs_component_set_member_i16(component.ptr, typesInfo.offset, value)
+                                case Type.I32:
+                                    flecs_core._flecs_component_set_member_i32(component.ptr, typesInfo.offset, value)
+                                case Type.I64:
+                                    flecs_core._flecs_component_set_member_i64(component.ptr, typesInfo.offset, value)
                                 case Type.F32:
-                                    flecs_core._flecs_component_set_member_float
+                                    flecs_core._flecs_component_set_member_f32
                             (component.ptr, typesInfo.offset, value)
+                                case Type.F64:
+                                    flecs_core._flecs_component_set_member_f32(component.ptr, typesInfo.offset, value)
                                 default:
                                     break
                             }
@@ -157,6 +193,7 @@ export class World {
         const members = Object.entries(component)
         // Names of component members
         const cNames = new Uint32Array(members.length - Component.numOfInternalFields)
+        const cTypes = new Uint8Array(members.length - Component.numOfInternalFields)
 
         // Iterate over members and create type info for flecs component metadata
         let i = 0
@@ -165,11 +202,13 @@ export class World {
             if(Component.isMembers(key)) {    
                 // Allocate string for member name, return pointer to string
                 const cName = cNames[i - Component.numOfInternalFields] = flecs_core.allocateUTF8(key)
+                const cType = types[key] ? types[key] : checkType(value)
                 cNames[i - Component.numOfInternalFields] = cName
+                cTypes[i - Component.numOfInternalFields] = cType
                 // Create type info for member
                 component.typesInfo[key] = {
                     // If types have not been defined, reflect the types from the JavaScript values
-                    type: types[key] ? types[key] : checkType(value),
+                    type: cType,
                     cName,
                     index: i - Component.numOfInternalFields,
                     offset
@@ -181,13 +220,19 @@ export class World {
         }
 
         // Allocate array of string pointers
-        const buffer = flecs_core._malloc(cNames.length * cNames.BYTES_PER_ELEMENT)
+        const cNamesBuffer = flecs_core._malloc(cNames.length * cNames.BYTES_PER_ELEMENT)
         
         // Write array of string pointers to memory
-        flecs_core.HEAPU32.set(cNames, buffer / cNames.BYTES_PER_ELEMENT)
+        flecs_core.HEAPU32.set(cNames, cNamesBuffer / cNames.BYTES_PER_ELEMENT)
+
+        // Allocate array of component types (u8s)
+        const cTypesBuffer = flecs_core._malloc(cTypes.length * cTypes.BYTES_PER_ELEMENT)
+
+        // Write array of uint8s to memory
+        flecs_core.HEAPU8.set(cTypes, cTypesBuffer / cTypes.BYTES_PER_ELEMENT)
         
         // Create component
-        component.id = flecs_core._flecs_component_create(cName, buffer, cNames.length, buffer, cNames.length)
+        component.id = flecs_core._flecs_component_create(cName, cNamesBuffer, cNames.length, cTypesBuffer, cTypes.length)
         
         // Update caches
         ComponentIDCache.set(_component.name, component.id)
@@ -195,7 +240,8 @@ export class World {
 
         // Free memory
         flecs_core._m_free(cName)
-        flecs_core._m_free(buffer)
+        flecs_core._m_free(cNamesBuffer)
+        flecs_core._m_free(cTypesBuffer)
 
         return component
     }
