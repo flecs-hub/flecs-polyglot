@@ -14,7 +14,8 @@ export enum Type {
     F64,
     Bool,
     String,
-    Array
+    Array,
+    F32Array,
 }
 export type JsPrimitive = string | number | boolean 
 export type Types = { [key: string]: Type }
@@ -52,11 +53,11 @@ export const TypeSizes = {
 
 export const checkType = (value: JsPrimitive): Type => {
     switch (typeof value) {
-        case "string":
+        case 'string':
             return Type.String
-        case "number":
+        case 'number':
             return Type.F64
-        case "boolean":
+        case 'boolean':
             return Type.Bool
         default:
             throw new Error("Not a primitive type")
@@ -145,6 +146,9 @@ export class World {
                                     return flecs_core._flecs_component_get_member_f32(component.ptr, typesInfo.offset)
                                 case Type.F64:
                                     return flecs_core._flecs_component_get_member_f64(component.ptr, typesInfo.offset)
+                                case Type.String:
+                                    const stringPtr = flecs_core._flecs_component_get_member_string(component.ptr, typesInfo.offset)
+                                    return flecs_core.UTF8ToString(stringPtr)
                             }
                         }
                         return value
@@ -155,25 +159,39 @@ export class World {
                             switch(typesInfo.type) {
                                 case Type.U8:
                                     flecs_core._flecs_component_set_member_u8(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.U16:
                                     flecs_core._flecs_component_set_member_u16(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.U32:
                                     flecs_core._flecs_component_set_member_u32(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.U64:
                                     flecs_core._flecs_component_set_member_u64(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.I8:
                                     flecs_core._flecs_component_set_member_i8(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.I16:
                                     flecs_core._flecs_component_set_member_i16(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.I32:
                                     flecs_core._flecs_component_set_member_i32(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.I64:
                                     flecs_core._flecs_component_set_member_i64(component.ptr, typesInfo.offset, value)
+                                    break
                                 case Type.F32:
                                     flecs_core._flecs_component_set_member_f32
                             (component.ptr, typesInfo.offset, value)
+                                break
                                 case Type.F64:
                                     flecs_core._flecs_component_set_member_f32(component.ptr, typesInfo.offset, value)
+                                    break
+                                case Type.String:
+                                    const stringPtr = flecs_core.allocateUTF8(value)
+                                    flecs_core._flecs_component_set_member_string(component.ptr, typesInfo.offset, stringPtr)
+                                   break
                                 default:
                                     break
                             }

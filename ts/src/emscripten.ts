@@ -21,6 +21,7 @@ export type Array = Pointer
 export interface EmscriptenModuleExtended extends EmscriptenModule {
 	allocateUTF8: typeof allocateUTF8,
     writeArrayToMemory: typeof writeArrayToMemory,
+    UTF8ToString: typeof UTF8ToString,
     _m_free: (ptr: Pointer) => void,
 }
 
@@ -54,6 +55,8 @@ export interface CoreAPI {
     _flecs_component_get_member_f32: (component_ptr: Pointer, offset: u32) => f32,
     _flecs_component_set_member_f64: (component_ptr: Pointer, offset: u32, value: f64) => void,
     _flecs_component_get_member_f64: (component_ptr: Pointer, offset: u32) => f64,
+    _flecs_component_set_member_string: (component_ptr: Pointer, offset: u32, value: u32) => f64,
+    _flecs_component_get_member_string: (component_ptr: Pointer, offset: u32) => Pointer,
 }
 
 export const flecs_core: EmscriptenModuleExtended & CoreAPI = window['flecs_core']

@@ -61,7 +61,8 @@ unsafe fn get_member_type(member_type: u8) -> u64 {
         9 => FLECS__Eecs_f64_t,
         10 => FLECS__Eecs_bool_t,
         11 => FLECS__Eecs_string_t,
-        _ => FLECS__Eecs_u8_t
+        12 => FLECS__Eecs_iptr_t,
+        _ => FLECS__Eecs_iptr_t
     }
 }
 
@@ -302,6 +303,18 @@ pub unsafe fn flecs_component_get_member_f64(component_ptr: *mut c_void, offset:
     let member_ptr = component_ptr.offset(offset as isize) as *mut f64;
     let member_value: f64 = *member_ptr;
     member_value
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_string(component_ptr: *mut c_void, offset: u32, value: *mut c_char) {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_string(component_ptr: *mut c_void, offset: u32) -> *mut c_char {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
+    *member_ptr as *mut c_char
 }
 
 #[no_mangle]
