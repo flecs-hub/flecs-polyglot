@@ -161,7 +161,7 @@ export class World {
                                         length = 0
 
                                     // Get array from emscripten heap
-                                    return new Float32Array(flecs_core.HEAPF32.buffer, arrayPtr + TypeSizes[Type.F32], 10)
+                                    return new Float32Array(flecs_core.HEAPF32.buffer, arrayPtr + TypeSizes[Type.F32], length)
                             }
                         }
                         return value
