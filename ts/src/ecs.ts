@@ -121,6 +121,7 @@ export class World {
         // to change the values of thes struct in the C API
         for (const [key, value] of Object.entries(component)) {
             if(Component.isMembers(key)) {
+                // Getters and setters for component members
                 Object.defineProperty(component, key, {
                     get() {
                         if(component.ptr) {
@@ -149,6 +150,18 @@ export class World {
                                 case Type.String:
                                     const stringPtr = flecs_core._flecs_component_get_member_string(component.ptr, typesInfo.offset)
                                     return flecs_core.UTF8ToString(stringPtr)
+                                case Type.F32Array:
+                                    const arrayPtr = flecs_core._flecs_component_get_member_f32array(component.ptr, typesInfo.offset)
+                                    let length = new Float32Array(flecs_core.HEAPF32.buffer, arrayPtr, 1)[0]
+
+                                    // TODO: Memory in the heap is a floating point value
+                                    // until the pointer to the array is first set.
+                                    // Refactor this workaround later.
+                                    if(!Number.isSafeInteger(length)) 
+                                        length = 0
+
+                                    // Get array from emscripten heap
+                                    return new Float32Array(flecs_core.HEAPF32.buffer, arrayPtr + TypeSizes[Type.F32], 10)
                             }
                         }
                         return value
@@ -190,7 +203,25 @@ export class World {
                                     break
                                 case Type.String:
                                     const stringPtr = flecs_core.allocateUTF8(value)
+                                    // TODO: Free memory
                                     flecs_core._flecs_component_set_member_string(component.ptr, typesInfo.offset, stringPtr)
+                                   break
+                                case Type.F32Array:
+                                    // Allocate array of float32 values in memory'
+                                    // Add length of array to the first element of the array
+                                    const valueWithLength = new Float32Array(value.length + 1)
+                                    valueWithLength[0] = value.length
+                                    // Append rest of values to the array
+                                    valueWithLength.set(value, 1)
+
+                                    // Allocate memory for the array
+                                    const arrayBuffer = flecs_core._malloc((valueWithLength as Float32Array).length * (valueWithLength as Float32Array).BYTES_PER_ELEMENT)
+                                    // TODO: Free memory
+                                    // Write array of string pointers to memory
+                                    flecs_core.HEAPF32.set((valueWithLength as Float32Array), arrayBuffer / (valueWithLength as Float32Array).BYTES_PER_ELEMENT)
+
+                                    // Set component member
+                                    flecs_core._flecs_component_set_member_f32array(component.ptr, typesInfo.offset, arrayBuffer)
                                    break
                                 default:
                                     break

@@ -37,7 +37,8 @@ pub enum Type {
     F64,
     Bool,
     String,
-    Array
+    Array,
+    F32Array
 }
 
 static mut WORLD: Option<*mut ecs_world_t> = None;
@@ -61,7 +62,6 @@ unsafe fn get_member_type(member_type: u8) -> u64 {
         9 => FLECS__Eecs_f64_t,
         10 => FLECS__Eecs_bool_t,
         11 => FLECS__Eecs_string_t,
-        12 => FLECS__Eecs_iptr_t,
         _ => FLECS__Eecs_iptr_t
     }
 }
@@ -315,6 +315,18 @@ pub unsafe fn flecs_component_set_member_string(component_ptr: *mut c_void, offs
 pub unsafe fn flecs_component_get_member_string(component_ptr: *mut c_void, offset: u32) -> *mut c_char {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
     *member_ptr as *mut c_char
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_f32array(component_ptr: *mut c_void, offset: u32, value: *mut f32) {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut f32;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_f32array(component_ptr: *mut c_void, offset: u32) -> *mut f32 {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut f32;
+    *member_ptr as *mut f32
 }
 
 #[no_mangle]
