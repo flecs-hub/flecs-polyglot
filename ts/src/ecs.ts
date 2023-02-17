@@ -360,9 +360,7 @@ export class Query {
         const components = new Array<T>()
         for (let i = 0; i < count; i++) {
             const component = World.createComponent(componentType)
-            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i, count)
-            // Temporary solution with more overhead due to ecs_get_mut() lookup
-            // component.ptr = flecs_core._flecs_query_iter_field(this.iterPtr, i, termIndex)
+            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i, count, component.id)
             components.push(component)
         }
 

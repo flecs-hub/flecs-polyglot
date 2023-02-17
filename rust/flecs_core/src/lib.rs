@@ -60,8 +60,9 @@ unsafe fn get_member_type(member_type: u8) -> u64 {
         7 => FLECS__Eecs_i64_t,
         8 => FLECS__Eecs_f32_t,
         9 => FLECS__Eecs_f64_t,
-        10 => FLECS__Eecs_bool_t,
-        _ => FLECS__Eecs_f32_t
+        10 => FLECS__Eecs_f32_t,
+        11 => FLECS__Eecs_string_t,
+        _ => FLECS__Eecs_uptr_t
     }
 }
 
@@ -168,9 +169,17 @@ pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t, component_query_index
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut u8, component_index: u32, count: u32) -> *const u8 {
-    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize * 8);
-    let ptr = &ptrs_slice[(component_index as usize) * 8];
+pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut u8, component_index: u32, count: u32, component_id: u32) -> *const u8 {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    
+    // TODO: Have this value already on the host side in stead of 
+    // Looking up ecs_get_type_info every time
+    let component: ecs_entity_t = component_id.try_into().unwrap_unchecked();
+    let type_info = ecs_get_type_info(world, component);
+    let component_size = (*type_info).size as usize;
+
+    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize * component_size);
+    let ptr = &ptrs_slice[(component_index as usize) * component_size];
     ptr as *const u8
 }
 
@@ -307,13 +316,13 @@ pub unsafe fn flecs_component_get_member_f64(component_ptr: *mut c_void, offset:
 #[no_mangle]
 pub unsafe fn flecs_component_set_member_string(component_ptr: *mut c_void, offset: u32, value: *mut c_char) {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
-    // *member_ptr = value;
+    *member_ptr = value;
 }
 
 #[no_mangle]
 pub unsafe fn flecs_component_get_member_string(component_ptr: *mut c_void, offset: u32) -> *mut c_char {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
-    *member_ptr as *mut c_char
+    *member_ptr
 }
 
 #[no_mangle]
