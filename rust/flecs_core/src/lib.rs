@@ -61,7 +61,6 @@ unsafe fn get_member_type(member_type: u8) -> u64 {
         8 => FLECS__Eecs_f32_t,
         9 => FLECS__Eecs_f64_t,
         10 => FLECS__Eecs_bool_t,
-        11 => FLECS__Eecs_f32_t,
         _ => FLECS__Eecs_f32_t
     }
 }
