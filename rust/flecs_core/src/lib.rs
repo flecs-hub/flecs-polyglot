@@ -98,6 +98,18 @@ pub unsafe fn flecs_component_create(component_name: *const c_char, member_names
 }
 
 #[no_mangle]
+pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t  {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+
+    // Create component entity description
+    let mut ent_desc: ecs_entity_desc_t  = MaybeUninit::zeroed().assume_init();
+    ent_desc.name = tag_name;
+    let component_entity: ecs_entity_t = ecs_entity_init(world, &ent_desc);
+
+    ecs_entity_init(world, &ent_desc)
+}
+
+#[no_mangle]
 pub unsafe fn flecs_component_get(name: *const c_char) -> ecs_entity_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let component_entity: ecs_entity_t = ecs_lookup(world, name);
@@ -119,6 +131,14 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     let component_ptr = ecs_get_mut_id(world, entity, component);
     component_ptr
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_add_tag(entity: u32, tag: u32) {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    let tag: ecs_entity_t = tag.try_into().unwrap_unchecked();
+    ecs_add_id(world, entity, tag);
 }
 
 #[no_mangle]

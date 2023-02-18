@@ -34,6 +34,7 @@ export type FlecsComponent<I, T> = {
 export type EntityID = number
 export type ComponentID = number
 export type ComponentName = string
+export type TagName = string
 
 export const TypeSizes = {
     [Type.U8]: 1,
@@ -83,6 +84,10 @@ export class Component {
     static isMembers = (key: string) => key !== 'id' && key !== 'ptr' && key !== 'typesInfo' && key !== 'types'
 }
 
+export class Tag {
+    public id: EntityID = 0
+}
+
 export class Entity {
     public id: EntityID = 0
 
@@ -98,12 +103,25 @@ export class Entity {
                 Object.assign(component, ComponentsTypeCache.get(ComponentIDCache.get(component.constructor.name)))
             :
                 // Create new component with type info
-                World.registerComponent(Object.getPrototypeOf(component).constructor)
+                World.registerComponent(Object.getPrototypeOf(component).constructor) && Object.assign(component, ComponentsTypeCache.get(ComponentIDCache.get(component.constructor.name)))
             
             // Set component pointer from C API so that we can
             // later get and modify it's struct members
             flecsComponent.ptr = flecs_core._flecs_entity_add_component(this.id, flecsComponent.id)
         }
+        return this
+    }
+    
+    addTags(...tags: Tag[]) {
+        for (const tag of tags) {
+            const tagID = ComponentIDCache.has(tag.constructor.name) ? 
+                ComponentIDCache.get(tag.constructor.name)
+            :
+                World.registerTag(Object.getPrototypeOf(tag).constructor).id
+                
+            flecs_core._flecs_entity_add_tag(this.id, tagID)
+        }
+        return this
     }
 
     get(): Component { return null }
@@ -294,6 +312,25 @@ export class World {
 
         return component
     }
+    
+    static registerTag(_tag: typeof Tag) {
+        const tag = new _tag()
+
+        // Name of the tag
+        const tName = flecs_core.allocateUTF8(_tag.name)
+
+        // Create component
+        tag.id = flecs_core._flecs_tag_create(tName)
+        
+        // Update caches
+        ComponentIDCache.set(_tag.name, tag.id)
+        // ComponentsTypeCache.set(component.id, component)
+
+        // Free memory
+        flecs_core._m_free(tName)
+
+        return tag
+    }
 
     // TODO: Turn this into variadic function
     // and pass in array instead of single
@@ -369,7 +406,7 @@ export class Query {
 }
 
 export class System {
-    public query: Pointer = 0
+    public query: Query
     constructor() {}
-    run() {}
+    update(deltaM: number) {}
 }
