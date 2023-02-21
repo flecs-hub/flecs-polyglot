@@ -1,5 +1,6 @@
 import { flecs_core, Pointer } from './emscripten'
 import SparseMap from './utils/sparse-map'
+import { v4 as uuidv4 } from 'uuid'
 
 export enum Type {
     U8,
@@ -16,6 +17,7 @@ export enum Type {
     String,
     Array,
     F32Array,
+    U32Array,
 }
 export type JsPrimitive = string | number | boolean 
 export type Types = { [key: string]: Type }
@@ -91,11 +93,13 @@ export class Tag {
 export class Entity {
     public id: EntityID = 0
 
-    constructor() {
-        this.id = flecs_core._flecs_entity_create()
+    constructor(name?: string) {
+        const cName = flecs_core.allocateUTF8(name ? name : uuidv4())
+        this.id = flecs_core._flecs_entity_create(cName)
+        flecs_core._m_free(cName)
     }
 
-    add(...components: Component[]) {
+    add(...components: Component[]): Entity {
         for (const component of components) {
             const flecsComponent = ComponentIDCache.has(component.constructor.name) ? 
                 // Get component type info from cache
@@ -112,7 +116,7 @@ export class Entity {
         return this
     }
     
-    addTags(...tags: Tag[]) {
+    addTags(...tags: Tag[]): Entity {
         for (const tag of tags) {
             const tagID = ComponentIDCache.has(tag.constructor.name) ? 
                 ComponentIDCache.get(tag.constructor.name)
@@ -124,7 +128,20 @@ export class Entity {
         return this
     }
 
-    get(): Component { return null }
+    childOf(parent: Entity): Entity {
+        flecs_core._flecs_entity_childof(this.id, parent.id)
+        return this
+    }
+
+    children() { 
+        flecs_core._flecs_entity_children(this.id) 
+    }
+
+    get<T extends Component>(componentType: typeof Component): T {
+        const component = World.createComponent(componentType)
+        component.ptr = flecs_core._flecs_entity_get_component(this.id, component.id)
+        return component as T
+     }
 
     remove(component: Component) {}
 }

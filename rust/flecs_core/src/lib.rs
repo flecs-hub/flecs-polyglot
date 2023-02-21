@@ -125,6 +125,14 @@ pub unsafe fn flecs_entity_create(name: *const c_char) -> ecs_entity_t {
 }
 
 #[no_mangle]
+pub unsafe fn flecs_entity_get_component(entity: u32, component: u32) -> *const c_void {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    let component: ecs_entity_t = component.try_into().unwrap_unchecked();
+    ecs_get_id(world, entity, component) 
+}
+
+#[no_mangle]
 pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_void {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
@@ -139,6 +147,32 @@ pub unsafe fn flecs_entity_add_tag(entity: u32, tag: u32) {
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let tag: ecs_entity_t = tag.try_into().unwrap_unchecked();
     ecs_add_id(world, entity, tag);
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_childof(entity: u32, parent: u32) {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
+    let pair = ecs_make_pair(EcsChildOf, parent);
+    ecs_add_id(world, entity, pair);
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_children(parent: u32) {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
+
+    let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+    term.id = ecs_make_pair(EcsChildOf, parent);
+
+    let mut iter = ecs_term_iter(world, &mut term);
+    while ecs_term_next(&mut iter) {
+        for i in 0..iter.count {
+            let eid = iter.entities.offset(i as isize).as_ref().unwrap();
+            println!("Entity w term: {}", eid)
+        }
+    }
 }
 
 #[no_mangle]

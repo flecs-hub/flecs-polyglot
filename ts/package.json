@@ -1,13 +1,16 @@
 {
-    "name": "flecs",
-    "version": "1.0.0",
-    "description": "",
-    "scripts": {
-      "build": "npx esbuild ./src/index.ts --bundle --outdir=dist"
-    },
-    "devDependencies": {
-      "esbuild": "^0.17.1",
-      "@types/emscripten": "^1.39.6"
-    }
+  "name": "flecs",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "npx esbuild ./src/index.ts --bundle --outdir=dist"
+  },
+  "devDependencies": {
+    "@types/emscripten": "^1.39.6",
+    "@types/uuid": "^9.0.0",
+    "esbuild": "^0.17.1"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
   }
-  
+}

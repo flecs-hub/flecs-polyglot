@@ -28,9 +28,12 @@ export interface EmscriptenModuleExtended extends EmscriptenModule {
 export interface CoreAPI {
     _flecs_component_create: (name: Pointer, memberNames: Pointer, memberNamesSize: u32, memberValues: Pointer, memberValuesSize: u32) => Pointer,
     _flecs_tag_create: (name: Pointer) => Pointer,
-    _flecs_entity_create: () => Pointer,
+    _flecs_entity_create: (name: Pointer) => Pointer,
+    _flecs_entity_get_component: (entity: EntityID, component: EntityID) => Pointer,
     _flecs_entity_add_component: (entity: EntityID, component: EntityID) => Pointer,
     _flecs_entity_add_tag: (entity: EntityID, tag: EntityID) => Pointer,
+    _flecs_entity_childof: (entity: EntityID, parent: EntityID) => Pointer,
+    _flecs_entity_children: (parent: EntityID) => Pointer,
     _flecs_query_create: (components: Pointer, componentsSize: i32) => Pointer,
     _flecs_query_next: (iter: Pointer) => boolean,
     _flecs_query_iter: (query: Pointer) => Pointer,
