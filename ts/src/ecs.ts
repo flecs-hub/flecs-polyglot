@@ -16,8 +16,8 @@ export enum Type {
     Bool,
     String,
     Array,
-    F32Array,
     U32Array,
+    F32Array,
 }
 export type JsPrimitive = string | number | boolean 
 export type Types = { [key: string]: Type }
@@ -197,9 +197,26 @@ export class World {
                                 case Type.F64:
                                     return flecs_core._flecs_component_get_member_f64(component.ptr, typesInfo.offset)
                                 case Type.String:
+                                {
                                     const stringPtr = flecs_core._flecs_component_get_member_string(component.ptr, typesInfo.offset)
                                     return flecs_core.UTF8ToString(stringPtr)
+                                }
+                                case Type.U32Array:
+                                {
+                                    const arrayPtr = flecs_core._flecs_component_get_member_f32array(component.ptr, typesInfo.offset)
+                                    let length = new Uint32Array(flecs_core.HEAPU32.buffer, arrayPtr, 1)[0]
+
+                                    // TODO: Memory in the heap is a floating point value
+                                    // until the pointer to the array is first set.
+                                    // Refactor this workaround later.
+                                    if(!Number.isSafeInteger(length)) 
+                                        length = 0
+
+                                    // Get array from emscripten heap
+                                    return new Uint32Array(flecs_core.HEAPF32.buffer, arrayPtr + TypeSizes[Type.F32], length)
+                                }
                                 case Type.F32Array:
+                                {
                                     const arrayPtr = flecs_core._flecs_component_get_member_f32array(component.ptr, typesInfo.offset)
                                     let length = new Float32Array(flecs_core.HEAPF32.buffer, arrayPtr, 1)[0]
 
@@ -211,6 +228,7 @@ export class World {
 
                                     // Get array from emscripten heap
                                     return new Float32Array(flecs_core.HEAPF32.buffer, arrayPtr + TypeSizes[Type.F32], length)
+                                }
                             }
                         }
                         return value
@@ -251,11 +269,33 @@ export class World {
                                     flecs_core._flecs_component_set_member_f32(component.ptr, typesInfo.offset, value)
                                     break
                                 case Type.String:
+                                {
                                     const stringPtr = flecs_core.allocateUTF8(value)
                                     // TODO: Free memory
                                     flecs_core._flecs_component_set_member_string(component.ptr, typesInfo.offset, stringPtr)
                                    break
+                                }
+                                case Type.U32Array:
+                                {
+                                    // Allocate array of uint32 values in memory'
+                                    // Add length of array to the first element of the array
+                                    const valueWithLength = new Uint32Array(value.length + 1)
+                                    valueWithLength[0] = value.length
+                                    // Append rest of values to the array
+                                    valueWithLength.set(value, 1)
+
+                                    // Allocate memory for the array
+                                    const arrayBuffer = flecs_core._malloc((valueWithLength as Uint32Array).length * (valueWithLength as Uint32Array).BYTES_PER_ELEMENT)
+                                    // TODO: Free memory
+                                    // Write array of string pointers to memory
+                                    flecs_core.HEAPF32.set((valueWithLength as Uint32Array), arrayBuffer / (valueWithLength as Uint32Array).BYTES_PER_ELEMENT)
+
+                                    // Set component member
+                                    flecs_core._flecs_component_set_member_f32array(component.ptr, typesInfo.offset, arrayBuffer)
+                                    break
+                                }
                                 case Type.F32Array:
+                                {
                                     // Allocate array of float32 values in memory'
                                     // Add length of array to the first element of the array
                                     const valueWithLength = new Float32Array(value.length + 1)
@@ -272,6 +312,7 @@ export class World {
                                     // Set component member
                                     flecs_core._flecs_component_set_member_f32array(component.ptr, typesInfo.offset, arrayBuffer)
                                    break
+                                }
                                 default:
                                     break
                             }

@@ -38,6 +38,7 @@ pub enum Type {
     Bool,
     String,
     Array,
+    U32Array,
     F32Array
 }
 
@@ -385,6 +386,18 @@ pub unsafe fn flecs_component_set_member_string(component_ptr: *mut c_void, offs
 pub unsafe fn flecs_component_get_member_string(component_ptr: *mut c_void, offset: u32) -> *mut c_char {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
     *member_ptr
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_u32array(component_ptr: *mut c_void, offset: u32, value: *mut u32) {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut u32;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_u32array(component_ptr: *mut c_void, offset: u32) -> *mut u32 {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut u32;
+    *member_ptr as *mut u32
 }
 
 #[no_mangle]
