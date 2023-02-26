@@ -133,8 +133,22 @@ export class Entity {
         return this
     }
 
-    children() { 
-        flecs_core._flecs_entity_children(this.id) 
+    children(): Array<Entity> { 
+        const iterPtr = flecs_core._flecs_entity_children(this.id)
+        flecs_core._flecs_term_next(iterPtr)
+
+        const count = flecs_core._flecs_iter_count(iterPtr)
+        const childrenPtr = flecs_core._flecs_child_entities(iterPtr)
+        const entities = new Array<Entity>()
+        // Iterate over HEAPU32 and get the children
+        for (let i = 0; i < count; i++) {
+            const child = flecs_core.HEAPU32[childrenPtr / 4 + i]
+            const entity = new Entity()
+            entity.id = child
+            entities.push(entity)
+        }
+
+        return entities
     }
 
     get<T extends Component>(componentType: typeof Component): T {
@@ -401,7 +415,7 @@ export class Query {
     }
 
     field<T extends Component>(componentType: new() => T): Array<T> {
-        const count = flecs_core._flecs_query_iter_count(this.iterPtr)
+        const count = flecs_core._flecs_iter_count(this.iterPtr)
         const termIndex = this.indexes.indexOf(componentType.name)
 
         /// Get iter array ptr which is an array of array of component pointers

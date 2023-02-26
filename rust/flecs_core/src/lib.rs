@@ -159,7 +159,7 @@ pub unsafe fn flecs_entity_childof(entity: u32, parent: u32) {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_entity_children(parent: u32) {
+pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t  {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
 
@@ -167,12 +167,20 @@ pub unsafe fn flecs_entity_children(parent: u32) {
     term.id = ecs_make_pair(EcsChildOf, parent);
 
     let mut iter = ecs_term_iter(world, &mut term);
-    while ecs_term_next(&mut iter) {
-        for i in 0..iter.count {
-            let eid = iter.entities.offset(i as isize).as_ref().unwrap();
-            println!("Entity w term: {}", eid)
-        }
-    }
+
+    // Convert iter to raw pointer
+    let iter_ptr: *mut ecs_iter_t = &mut iter;
+    iter_ptr
+}
+
+#[no_mangle]
+pub unsafe fn flecs_term_next(iter: *mut ecs_iter_t)  {
+    ecs_term_next(iter);
+}
+
+#[no_mangle]
+pub unsafe fn flecs_child_entities(iter: *mut ecs_iter_t) -> *mut u64  {
+    (*iter).entities
 }
 
 #[no_mangle]
@@ -209,7 +217,7 @@ pub unsafe fn flecs_query_iter(query: *mut ecs_query_t) -> *mut ecs_iter_t {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_count(iter: *mut ecs_iter_t) -> i32 {
+pub unsafe fn flecs_iter_count(iter: *mut ecs_iter_t) -> i32 {
     (*iter).count
 }
 
