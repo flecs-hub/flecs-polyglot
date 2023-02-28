@@ -26,9 +26,12 @@ export interface EmscriptenModuleExtended extends EmscriptenModule {
 }
 
 export interface CoreAPI {
-    _flecs_component_create: (name: Pointer, memberNames: Pointer, memberNamesSize: u32, memberValues: Pointer, memberValuesSize: u32) => Pointer,
+    _flecs_component_create: (name: Pointer, member_names: Pointer, member_names_count: u32, member_values: Pointer, member_values_count: u32) => Pointer,
     _flecs_tag_create: (name: Pointer) => Pointer,
-    _flecs_entity_create: (name: Pointer) => Pointer,
+    _flecs_entity_create: () => EntityID,
+    _flecs_entity_create_named: (name: Pointer) => EntityID,
+    _flecs_entity_create_bulk: (count: u32) => Pointer,
+    _flecs_entity_create_bulk_components: (entity_count: u32, component_count: u32, componenets: Pointer) => Pointer,
     _flecs_entity_get_component: (entity: EntityID, component: EntityID) => Pointer,
     _flecs_entity_add_component: (entity: EntityID, component: EntityID) => Pointer,
     _flecs_entity_add_tag: (entity: EntityID, tag: EntityID) => Pointer,
@@ -36,7 +39,7 @@ export interface CoreAPI {
     _flecs_entity_children: (parent: EntityID) => Pointer,
     _flecs_child_entities: (iter: Pointer) => Pointer,
     _flecs_term_next: (iter: Pointer) => boolean,
-    _flecs_query_create: (components: Pointer, componentsSize: i32) => Pointer,
+    _flecs_query_create: (components: Pointer, components_count: i32) => Pointer,
     _flecs_query_next: (iter: Pointer) => boolean,
     _flecs_query_iter: (query: Pointer) => Pointer,
     _flecs_query_iter_ptrs: (iter: Pointer, component_query_index: u32) => Pointer,

@@ -69,7 +69,7 @@ unsafe fn get_member_type(member_type: u8) -> u64 {
 
 
 #[no_mangle]
-pub unsafe fn flecs_component_create(component_name: *const c_char, member_names: *const *const c_char, member_names_size: u32, member_types: *const *const u8, member_types_size: u32) -> ecs_entity_t  {
+pub unsafe fn flecs_component_create(component_name: *const c_char, member_names: *const *const c_char, member_names_count: u32, member_types: *const *const u8, member_types_size: u32) -> ecs_entity_t  {
     let world = *WORLD.as_mut().unwrap_unchecked();
 
     // Create component entity description
@@ -83,8 +83,8 @@ pub unsafe fn flecs_component_create(component_name: *const c_char, member_names
     let member: ecs_member_t = MaybeUninit::zeroed().assume_init();
     struct_desc.members = [member; 32usize];
 
-    let member_names = std::slice::from_raw_parts(member_names as *const u32, member_names_size as usize);
-    let member_types = std::slice::from_raw_parts(member_types as *const u8, member_names_size as usize);
+    let member_names = std::slice::from_raw_parts(member_names as *const u32, member_names_count as usize);
+    let member_types = std::slice::from_raw_parts(member_types as *const u8, member_names_count as usize);
     // Iterate through member names
     for (index, member_name) in member_names.iter().enumerate() {
         let member_name = *member_name as *const c_char;
@@ -118,11 +118,39 @@ pub unsafe fn flecs_component_get(name: *const c_char) -> ecs_entity_t {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_entity_create(name: *const c_char) -> ecs_entity_t {
+pub unsafe fn flecs_entity_create() -> ecs_entity_t {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
+    ecs_entity_init(world, &ent_desc)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_create_named(name: *const c_char) -> ecs_entity_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.name = name;
     ecs_entity_init(world, &ent_desc)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_create_bulk(count: i32) -> *const ecs_entity_t {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
+    ent_desc.count = count;
+    ecs_bulk_init(world, &ent_desc)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_create_bulk_components(entity_count: i32, component_count: u32, components: *const u32) -> *const ecs_entity_t {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let components = std::slice::from_raw_parts(components as *const u32, component_count as usize);
+    let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
+    ent_desc.count = entity_count;
+    for (index, component) in components.iter().enumerate() {
+        ent_desc.ids[index] = *component as u64;
+    }
+
+    ecs_bulk_init(world, &ent_desc)
 }
 
 #[no_mangle]
@@ -185,9 +213,9 @@ pub unsafe fn flecs_child_entities(iter: *mut ecs_iter_t) -> *mut u64  {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_create(id: *mut i32, length: i32) -> *mut ecs_query_t {
+pub unsafe fn flecs_query_create(ids: *mut i32, components_count: i32) -> *mut ecs_query_t {
     // Slice from raw parts
-    let ids = std::slice::from_raw_parts(id as *mut i32, length as usize);
+    let ids = std::slice::from_raw_parts(ids as *mut i32, components_count as usize);
 
     let world = *WORLD.as_mut().unwrap_unchecked();
     let mut desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();

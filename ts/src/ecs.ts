@@ -93,10 +93,15 @@ export class Tag {
 export class Entity {
     public id: EntityID = 0
 
-    constructor(name?: string) {
-        const cName = flecs_core.allocateUTF8(name ? name : uuidv4())
-        this.id = flecs_core._flecs_entity_create(cName)
-        flecs_core._m_free(cName)
+    constructor(name?: string, bulkCreated: boolean = false) {
+        if(bulkCreated) return
+        if(name) {
+            const cName = flecs_core.allocateUTF8(name)
+            this.id = flecs_core._flecs_entity_create_named(cName)
+            flecs_core._m_free(cName)
+        } else {
+            this.id = flecs_core._flecs_entity_create()
+        }
     }
 
     add(...components: Component[]): Entity {
@@ -141,8 +146,9 @@ export class Entity {
         const childrenPtr = flecs_core._flecs_child_entities(iterPtr)
         const entities = new Array<Entity>()
         // Iterate over HEAPU32 and get the children
+        const ptrIndex = childrenPtr / 4
         for (let i = 0; i < count; i++) {
-            const child = flecs_core.HEAPU32[childrenPtr / 4 + i]
+            const child = flecs_core.HEAPU32[ptrIndex + i]
             const entity = new Entity()
             entity.id = child
             entities.push(entity)
@@ -158,6 +164,84 @@ export class Entity {
      }
 
     remove(component: Component) {}
+
+    static bulkCreate(count: number) {
+        const entitiesPtr = flecs_core._flecs_entity_create_bulk(count)
+        const ptrIndex = entitiesPtr / 4
+        
+        const entities = new Array<Entity>()
+        for (let i = 0; i < count; i++) {
+            const entity = new Entity(null, true)
+            entity.id = flecs_core.HEAPU32[ptrIndex + (i * 2)]
+            entities.push(entity)
+        }
+
+        return entities
+    }
+
+    static bulkCreateComponents(entityCount: number, ...components: (typeof Component)[]) {
+        const componentIds = new Uint32Array(components.length)
+        // Iterate and get index and component 
+        for (let i = 0; i < components.length; i++) {
+            const component = components[i]
+            if(!ComponentIDCache.has(component.name))
+                throw new Error(`Component ${component.name} has not been registered`)
+
+            const id = ComponentIDCache.get(component.name)
+            componentIds[i] = id
+        }
+
+        // Allocate array
+        const componentsBuffer = flecs_core._malloc(componentIds.length * componentIds.BYTES_PER_ELEMENT)
+        
+        // Write array of pointers to memory
+        flecs_core.HEAPU32.set(componentIds, componentsBuffer / componentIds.BYTES_PER_ELEMENT)
+
+        const entitiesPtr = flecs_core._flecs_entity_create_bulk_components(entityCount, componentIds.length, componentsBuffer)
+        const ptrIndex = entitiesPtr / 4
+        
+        const entities = new Array<Entity>()
+        for (let i = 0; i < entityCount; i++) {
+            const entity = new Entity(null, true)
+            entity.id = flecs_core.HEAPU32[ptrIndex + (i * 2)]
+            entities.push(entity)
+        }
+
+        return entities
+    }
+
+    static bulkCreateComponentsData(entityCount: number, ...components: (typeof Component)[]) {
+        const componentIds = new Uint32Array(components.length)
+        // Iterate and get index and component 
+        for (let i = 0; i < components.length; i++) {
+            const component = components[i]
+            if(!ComponentIDCache.has(component.name))
+                throw new Error(`Component ${component.name} has not been registered`)
+
+            const id = ComponentIDCache.get(component.name)
+            componentIds[i] = id
+        }
+
+        // Allocate array
+        const componentsBuffer = flecs_core._malloc(componentIds.length * componentIds.BYTES_PER_ELEMENT)
+        
+        // Write array of pointers to memory
+        flecs_core.HEAPU32.set(componentIds, componentsBuffer / componentIds.BYTES_PER_ELEMENT)
+
+        const entitiesPtr = flecs_core._flecs_entity_create_bulk_components(entityCount, componentIds.length, componentsBuffer)
+        const ptrIndex = entitiesPtr / 4
+        
+        const entities = new Array<Entity>()
+        for (let i = 0; i < entityCount; i++) {
+            const entity = new Entity(null, true)
+            entity.id = flecs_core.HEAPU32[ptrIndex + (i * 2)]
+            entities.push(entity)
+        }
+
+        return entities
+    }
+
+    static bulkCreatePrefab(count: number) {}
 }
 
 export class World {
@@ -403,10 +487,7 @@ export class World {
 
         return tag
     }
-
-    // TODO: Turn this into variadic function
-    // and pass in array instead of single
-    // component id
+    
     static query(...components: (typeof Component)[]): Query {
         const componentIds = new Array<number>()
         const indexes = new Array<ComponentName>()
