@@ -503,7 +503,7 @@ export class World {
 
         const BYTES_PER_ELEMENT = 4
         // Allocate array of component ids
-        const buffer = flecs_core._malloc(componentIds.length * BYTES_PER_ELEMENT)
+        const buffer = flecs_core._malloc(componentIds.length)
         // Write array of component ids to memory
         flecs_core.HEAPU32.set(componentIds, buffer / BYTES_PER_ELEMENT)
 
@@ -538,19 +538,13 @@ export class Query {
 
     field<T extends Component>(componentType: new() => T): Array<T> {
         const count = flecs_core._flecs_iter_count(this.iterPtr)
-        const termIndex = this.indexes.indexOf(componentType.name)
-
-        /// Get iter array ptr which is an array of array of component pointers
-        const iterPtrsPtr = flecs_core._flecs_query_iter_ptrs(this.iterPtr, termIndex)
-        const ptrIndex = (iterPtrsPtr / 4)
-        // Convert to JS array
-        const iterArrayPtr = flecs_core.HEAPU32[ptrIndex]
+        const termIndex = this.indexes.indexOf(componentType.name) + 1
 
         // Create array of components
         const components = new Array<T>()
         for (let i = 0; i < count; i++) {
             const component = World.createComponent(componentType)
-            component.ptr = flecs_core._flecs_query_iter_component(iterArrayPtr, i, count, component.id)
+            component.ptr = flecs_core._flecs_query_field(this.iterPtr, termIndex, count, i)
             components.push(component)
         }
 

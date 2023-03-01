@@ -262,15 +262,29 @@ pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t, component_query_index
 pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut u8, component_index: u32, count: u32, component_id: u32) -> *const u8 {
     let world = *WORLD.as_mut().unwrap_unchecked();
     
-    // TODO: Have this value already on the host side in stead of 
+    // TODO: Have this size value already on the host side in stead of 
     // Looking up ecs_get_type_info every time
     let component: ecs_entity_t = component_id.try_into().unwrap_unchecked();
     let type_info = ecs_get_type_info(world, component);
     let component_size = (*type_info).size as usize;
-
+    
     let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize * component_size);
     let ptr = &ptrs_slice[(component_index as usize) * component_size];
     ptr as *const u8
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_field(iter: *mut ecs_iter_t, term_index: i32, count: u32, index: u32) -> *const c_void {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    // TODO: Have this size value already on the host side in stead of 
+    // Looking up ecs_get_type_info every time
+    let size = ecs_field_size(iter, term_index);
+    let field = ecs_field_w_size(iter, size, term_index);
+
+    // Create pointer for an offset in field which is an array of component data
+    let ptrs_slice = std::slice::from_raw_parts(field, count as usize * size);
+    let ptr = &ptrs_slice[index as usize * size];
+    ptr as *const c_void
 }
 
 #[no_mangle]
