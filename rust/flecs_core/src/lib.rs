@@ -154,11 +154,11 @@ pub unsafe fn flecs_entity_create_bulk_components(entity_count: i32, component_c
 }
 
 #[no_mangle]
-pub unsafe fn flecs_entity_get_component(entity: u32, component: u32) -> *const c_void {
+pub unsafe fn flecs_entity_get_component(entity: u32, component: u32) -> *mut c_void {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
-    ecs_get_id(world, entity, component) 
+    ecs_get_mut_id(world, entity, component) 
 }
 
 #[no_mangle]
@@ -220,7 +220,6 @@ pub unsafe fn flecs_query_create(ids: *mut i32, components_count: i32) -> *mut e
     let world = *WORLD.as_mut().unwrap_unchecked();
     let mut desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
     
-
     // Iterate over ids 
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();

@@ -492,7 +492,7 @@ export class World {
         const componentIds = new Array<number>()
         const indexes = new Array<ComponentName>()
 
-        for (const component  of components) {
+        for (const component of components) {
             if(!ComponentIDCache.has(component.name))
                 throw new Error(`Component ${component.name} has not been registered`)
     
