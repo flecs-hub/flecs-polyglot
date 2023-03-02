@@ -45,6 +45,7 @@ export interface CoreAPI {
     _flecs_query_iter_ptrs: (iter: Pointer, component_query_index: u32) => Pointer,
     _flecs_query_iter_component: (component_array_ptr: Pointer, component_index: u32, count: i32, component_id: EntityID) => Pointer,
     _flecs_query_field: (iter: Pointer, term_index: u32, count: u32, index: u32) => Pointer,
+    _flecs_query_entity: (iter: Pointer, count: u32, index: u32) => Pointer,
     _flecs_iter_count: (iter: Pointer) => i32,
     _flecs_component_set_member_u8: (component_ptr: Pointer, offset: u32, value: u8) => void,
     _flecs_component_get_member_u8: (component_ptr: Pointer, offset: u32) => u8,

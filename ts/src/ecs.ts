@@ -148,7 +148,7 @@ export class Entity {
         // Iterate over HEAPU32 and get the children
         const ptrIndex = childrenPtr / 4
         for (let i = 0; i < count; i++) {
-            const child = flecs_core.HEAPU32[ptrIndex + i]
+            const child = flecs_core.HEAPU32[ptrIndex + (i * 2)]
             const entity = new Entity()
             entity.id = child
             entities.push(entity)
@@ -536,6 +536,8 @@ export class Query {
        return flecs_core._flecs_query_next(this.iterPtr)
     }
 
+    // TODO: Redo this to return array pointer from WASM that we iterate
+    // through using the heap to avoid WASM boundary overhead
     field<T extends Component>(componentType: new() => T): Array<T> {
         const count = flecs_core._flecs_iter_count(this.iterPtr)
         const termIndex = this.indexes.indexOf(componentType.name) + 1
@@ -549,6 +551,20 @@ export class Query {
         }
 
         return components
+    }
+
+    // TODO: Redo this to return array pointer from WASM that we iterate
+    // through using the heap to avoid WASM boundary overhead
+    entities(): Array<Entity> {
+        const count = flecs_core._flecs_iter_count(this.iterPtr)
+        const entities = new Array<Entity>()
+        for (let i = 0; i < count; i++) {
+            const entity = new Entity()
+            entity.id = flecs_core._flecs_query_entity(this.iterPtr, count, i)
+            entities.push(entity)
+        }
+
+        return entities
     }
 }
 

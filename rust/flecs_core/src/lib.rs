@@ -288,6 +288,15 @@ pub unsafe fn flecs_query_field(iter: *mut ecs_iter_t, term_index: i32, count: u
 }
 
 #[no_mangle]
+pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) -> u64 {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let entities = (*iter).entities;
+    let entities_slice = std::slice::from_raw_parts(entities, count as usize);
+    let entity = entities_slice[index as usize];
+    entity
+}
+
+#[no_mangle]
 pub unsafe fn flecs_component_set_member_u8(component_ptr: *mut c_void, offset: u32, value: u8) {
     let member_ptr = component_ptr.offset(offset as isize) as *mut u8;
     *member_ptr = value;
