@@ -163,7 +163,9 @@ export class Entity {
         return component as T
      }
 
-    remove(component: Component) {}
+    remove(component: typeof Component | typeof Tag) {
+        flecs_core._flecs_entity_remove_component(this.id, ComponentIDCache.get(component.name))
+    }
 
     static bulkCreate(count: number) {
         const entitiesPtr = flecs_core._flecs_entity_create_bulk(count)
@@ -490,29 +492,28 @@ export class World {
     
     static query(...components: (typeof Component)[]): Query {
         const componentIds = new Array<number>()
-        const indexes = new Array<ComponentName>()
+            const indexes = new Array<ComponentName>()
 
-        for (const component of components) {
-            if(!ComponentIDCache.has(component.name))
-                throw new Error(`Component ${component.name} has not been registered`)
-    
-            const id = ComponentIDCache.get(component.name)
-            componentIds.push(id)
-            indexes.push(component.name)
-        }
-
-        const BYTES_PER_ELEMENT = 4
-        // Allocate array of component ids
-        const buffer = flecs_core._malloc(componentIds.length)
-        // Write array of component ids to memory
-        flecs_core.HEAPU32.set(componentIds, buffer / BYTES_PER_ELEMENT)
-
-        // Create query
-        const query = new Query(flecs_core._flecs_query_create(buffer, componentIds.length), indexes)
-
-        // Free memory
-        flecs_core._m_free(buffer)
+            for (const component of components) {
+                if(!ComponentIDCache.has(component.name))
+                    throw new Error(`Component ${component.name} has not been registered`)
         
+                const id = ComponentIDCache.get(component.name)
+                componentIds.push(id)
+                indexes.push(component.name)
+            }
+
+            const BYTES_PER_ELEMENT = 4
+            // Allocate array of component ids
+            const buffer = flecs_core._malloc(componentIds.length)
+            // Write array of component ids to memory
+            flecs_core.HEAPU32.set(componentIds, buffer / BYTES_PER_ELEMENT)
+
+            // Create query
+            const query = new Query(flecs_core._flecs_query_create(buffer, componentIds.length), indexes)
+
+            // Free memory
+            flecs_core._m_free(buffer)
         return query
     }
 }
@@ -525,6 +526,18 @@ export class Query {
     constructor(ptr: Pointer, indexes: Array<ComponentName>) {
         this.ptr = ptr
         this.indexes = indexes
+    }
+
+    term(component: typeof Component): Query {
+        if(!ComponentIDCache.has(component.name))
+            throw new Error(`Component ${component.name} has not been registered`)
+
+        const id = ComponentIDCache.get(component.name)
+        return this
+    }
+
+    build(world: World, ...components: (typeof Component)[]): Query {
+        
     }
 
     iter(): Pointer {

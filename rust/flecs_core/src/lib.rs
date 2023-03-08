@@ -171,6 +171,14 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
 }
 
 #[no_mangle]
+pub unsafe fn flecs_entity_remove_component(entity: u32, component: u32) {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    let component: ecs_entity_t = component.try_into().unwrap_unchecked();
+    ecs_remove_id(world, entity, component)
+}
+
+#[no_mangle]
 pub unsafe fn flecs_entity_add_tag(entity: u32, tag: u32) {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
