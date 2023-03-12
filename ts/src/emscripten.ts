@@ -14,7 +14,7 @@ export type i32 = number
 export type i64 = number
 export type f32 = number
 export type f64 = number
-export type Bool = boolean
+export type Bool = number
 export type String = Pointer
 export type Array = Pointer
 
@@ -68,6 +68,8 @@ export interface CoreAPI {
     _flecs_component_get_member_f32: (component_ptr: Pointer, offset: u32) => f32,
     _flecs_component_set_member_f64: (component_ptr: Pointer, offset: u32, value: f64) => void,
     _flecs_component_get_member_f64: (component_ptr: Pointer, offset: u32) => f64,
+    _flecs_component_set_member_bool: (component_ptr: Pointer, offset: u32, value: Bool) => void,
+    _flecs_component_get_member_bool: (component_ptr: Pointer, offset: u32) => Bool,
     _flecs_component_set_member_string: (component_ptr: Pointer, offset: u32, value: u32) => f64,
     _flecs_component_get_member_string: (component_ptr: Pointer, offset: u32) => Pointer,
     _flecs_component_set_member_f32array: (component_ptr: Pointer, offset: u32, value: u32) => f64,

@@ -282,6 +282,8 @@ export class World {
                                     return flecs_core._flecs_component_get_member_f32(component.ptr, typesInfo.offset)
                                 case Type.F64:
                                     return flecs_core._flecs_component_get_member_f64(component.ptr, typesInfo.offset)
+                                case Type.Bool:
+                                    return (flecs_core._flecs_component_get_member_bool(component.ptr, typesInfo.offset) === 0 ? false : true)
                                 case Type.String:
                                 {
                                     const stringPtr = flecs_core._flecs_component_get_member_string(component.ptr, typesInfo.offset)
@@ -353,6 +355,9 @@ export class World {
                                 break
                                 case Type.F64:
                                     flecs_core._flecs_component_set_member_f32(component.ptr, typesInfo.offset, value)
+                                    break
+                                case Type.Bool:
+                                    flecs_core._flecs_component_set_member_bool(component.ptr, typesInfo.offset, value)
                                     break
                                 case Type.String:
                                 {
@@ -584,5 +589,5 @@ export class Query {
 export class System {
     public query: Query
     constructor() {}
-    update(deltaM: number) {}
+    update() {}
 }
