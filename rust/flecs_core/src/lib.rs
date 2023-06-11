@@ -8,7 +8,9 @@
 
 use std::ffi::{c_char, c_void};
 use std::mem::MaybeUninit;
-mod bindings { include!("./bindings.rs"); }
+mod bindings {
+    include!("./bindings.rs");
+}
 use bindings::*;
 
 #[repr(C)]
@@ -39,10 +41,10 @@ pub enum Type {
     String,
     Array,
     U32Array,
-    F32Array
+    F32Array,
 }
 
-static mut WORLD: Option<*mut ecs_world_t> = None;
+pub static mut WORLD: Option<*mut ecs_world_t> = None;
 
 pub fn init() {
     // Create a flecs world
@@ -63,17 +65,22 @@ unsafe fn get_member_type(member_type: u8) -> u64 {
         9 => FLECS__Eecs_f64_t,
         10 => FLECS__Eecs_bool_t,
         11 => FLECS__Eecs_string_t,
-        _ => FLECS__Eecs_uptr_t
+        _ => FLECS__Eecs_uptr_t,
     }
 }
 
-
 #[no_mangle]
-pub unsafe fn flecs_component_create(component_name: *const c_char, member_names: *const *const c_char, member_names_count: u32, member_types: *const *const u8, member_types_size: u32) -> ecs_entity_t  {
+pub unsafe fn flecs_component_create(
+    component_name: *const c_char,
+    member_names: *const *const c_char,
+    member_names_count: u32,
+    member_types: *const *const u8,
+    member_types_size: u32,
+) -> ecs_entity_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
 
     // Create component entity description
-    let mut ent_desc: ecs_entity_desc_t  = MaybeUninit::zeroed().assume_init();
+    let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.name = component_name;
     let component_entity: ecs_entity_t = ecs_entity_init(world, &ent_desc);
 
@@ -83,8 +90,10 @@ pub unsafe fn flecs_component_create(component_name: *const c_char, member_names
     let member: ecs_member_t = MaybeUninit::zeroed().assume_init();
     struct_desc.members = [member; 32usize];
 
-    let member_names = std::slice::from_raw_parts(member_names as *const u32, member_names_count as usize);
-    let member_types = std::slice::from_raw_parts(member_types as *const u8, member_names_count as usize);
+    let member_names =
+        std::slice::from_raw_parts(member_names as *const u32, member_names_count as usize);
+    let member_types =
+        std::slice::from_raw_parts(member_types as *const u8, member_names_count as usize);
     // Iterate through member names
     for (index, member_name) in member_names.iter().enumerate() {
         let member_name = *member_name as *const c_char;
@@ -94,16 +103,16 @@ pub unsafe fn flecs_component_create(component_name: *const c_char, member_names
         member.type_ = get_member_type(member_types[index]);
         struct_desc.members[index] = member;
     }
-    
+
     ecs_struct_init(world, &struct_desc)
 }
 
 #[no_mangle]
-pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t  {
+pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
 
     // Create component entity description
-    let mut ent_desc: ecs_entity_desc_t  = MaybeUninit::zeroed().assume_init();
+    let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.name = tag_name;
     let component_entity: ecs_entity_t = ecs_entity_init(world, &ent_desc);
 
@@ -141,7 +150,11 @@ pub unsafe fn flecs_entity_create_bulk(count: i32) -> *const ecs_entity_t {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_entity_create_bulk_components(entity_count: i32, component_count: u32, components: *const u32) -> *const ecs_entity_t {
+pub unsafe fn flecs_entity_create_bulk_components(
+    entity_count: i32,
+    component_count: u32,
+    components: *const u32,
+) -> *const ecs_entity_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let components = std::slice::from_raw_parts(components as *const u32, component_count as usize);
     let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
@@ -158,7 +171,7 @@ pub unsafe fn flecs_entity_get_component(entity: u32, component: u32) -> *mut c_
     let world = *WORLD.as_mut().unwrap_unchecked();
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
-    ecs_get_mut_id(world, entity, component) 
+    ecs_get_mut_id(world, entity, component)
 }
 
 #[no_mangle]
@@ -196,7 +209,7 @@ pub unsafe fn flecs_entity_childof(entity: u32, parent: u32) {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t  {
+pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
     let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
 
@@ -211,12 +224,12 @@ pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t  {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_term_next(iter: *mut ecs_iter_t)  {
+pub unsafe fn flecs_term_next(iter: *mut ecs_iter_t) {
     ecs_term_next(iter);
 }
 
 #[no_mangle]
-pub unsafe fn flecs_child_entities(iter: *mut ecs_iter_t) -> *mut u64  {
+pub unsafe fn flecs_child_entities(iter: *mut ecs_iter_t) -> *mut u64 {
     (*iter).entities
 }
 
@@ -227,8 +240,8 @@ pub unsafe fn flecs_query_create(ids: *mut i32, components_count: i32) -> *mut e
 
     let world = *WORLD.as_mut().unwrap_unchecked();
     let mut desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
-    
-    // Iterate over ids 
+
+    // Iterate over ids
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
         term.id = (*id).try_into().unwrap();
@@ -257,34 +270,48 @@ pub unsafe fn flecs_iter_count(iter: *mut ecs_iter_t) -> i32 {
     (*iter).count
 }
 
-// This is for the guest to get the pointers to the components based on the index 
+// This is for the guest to get the pointers to the components based on the index
 // of the component when the query was created
 // That's why there is an array of arrays. The first array is the first component type as an array of pointers
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_ptrs(iter: *mut ecs_iter_t, component_query_index: u32) -> *mut *mut c_void {
+pub unsafe fn flecs_query_iter_ptrs(
+    iter: *mut ecs_iter_t,
+    component_query_index: u32,
+) -> *mut *mut c_void {
     (*iter).ptrs
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_component(component_array_ptr: *mut u8, component_index: u32, count: u32, component_id: u32) -> *const u8 {
+pub unsafe fn flecs_query_iter_component(
+    component_array_ptr: *mut u8,
+    component_index: u32,
+    count: u32,
+    component_id: u32,
+) -> *const u8 {
     let world = *WORLD.as_mut().unwrap_unchecked();
-    
-    // TODO: Have this size value already on the host side in stead of 
+
+    // TODO: Have this size value already on the host side in stead of
     // Looking up ecs_get_type_info every time
     let component: ecs_entity_t = component_id.try_into().unwrap_unchecked();
     let type_info = ecs_get_type_info(world, component);
     let component_size = (*type_info).size as usize;
-    
-    let ptrs_slice = std::slice::from_raw_parts(component_array_ptr, count as usize * component_size);
+
+    let ptrs_slice =
+        std::slice::from_raw_parts(component_array_ptr, count as usize * component_size);
     let ptr = &ptrs_slice[(component_index as usize) * component_size];
     ptr as *const u8
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_field(iter: *mut ecs_iter_t, term_index: i32, count: u32, index: u32) -> *const c_void {
+pub unsafe fn flecs_query_field(
+    iter: *mut ecs_iter_t,
+    term_index: i32,
+    count: u32,
+    index: u32,
+) -> *const c_void {
     let world = *WORLD.as_mut().unwrap_unchecked();
-    // TODO: Have this size value already on the host side in stead of 
+    // TODO: Have this size value already on the host side in stead of
     // Looking up ecs_get_type_info every time
     let size = ecs_field_size(iter, term_index);
     let field = ecs_field_w_size(iter, size, term_index);
@@ -435,7 +462,11 @@ pub unsafe fn flecs_component_get_member_f64(component_ptr: *mut c_void, offset:
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_set_member_bool(component_ptr: *mut c_void, offset: u32, value: bool) {
+pub unsafe fn flecs_component_set_member_bool(
+    component_ptr: *mut c_void,
+    offset: u32,
+    value: bool,
+) {
     let member_ptr = component_ptr.offset(offset as isize) as *mut bool;
     *member_ptr = value;
 }
@@ -448,37 +479,58 @@ pub unsafe fn flecs_component_get_member_bool(component_ptr: *mut c_void, offset
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_set_member_string(component_ptr: *mut c_void, offset: u32, value: *mut c_char) {
+pub unsafe fn flecs_component_set_member_string(
+    component_ptr: *mut c_void,
+    offset: u32,
+    value: *mut c_char,
+) {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
     *member_ptr = value;
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_get_member_string(component_ptr: *mut c_void, offset: u32) -> *mut c_char {
+pub unsafe fn flecs_component_get_member_string(
+    component_ptr: *mut c_void,
+    offset: u32,
+) -> *mut c_char {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_char;
     *member_ptr
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_set_member_u32array(component_ptr: *mut c_void, offset: u32, value: *mut u32) {
+pub unsafe fn flecs_component_set_member_u32array(
+    component_ptr: *mut c_void,
+    offset: u32,
+    value: *mut u32,
+) {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut u32;
     *member_ptr = value;
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_get_member_u32array(component_ptr: *mut c_void, offset: u32) -> *mut u32 {
+pub unsafe fn flecs_component_get_member_u32array(
+    component_ptr: *mut c_void,
+    offset: u32,
+) -> *mut u32 {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut u32;
     *member_ptr as *mut u32
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_set_member_f32array(component_ptr: *mut c_void, offset: u32, value: *mut f32) {
+pub unsafe fn flecs_component_set_member_f32array(
+    component_ptr: *mut c_void,
+    offset: u32,
+    value: *mut f32,
+) {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut f32;
     *member_ptr = value;
 }
 
 #[no_mangle]
-pub unsafe fn flecs_component_get_member_f32array(component_ptr: *mut c_void, offset: u32) -> *mut f32 {
+pub unsafe fn flecs_component_get_member_f32array(
+    component_ptr: *mut c_void,
+    offset: u32,
+) -> *mut f32 {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut f32;
     *member_ptr as *mut f32
 }
