@@ -9,6 +9,9 @@ A universal scripting API for [flecs](https://github.com/SanderMertens/flecs) on
 ## Goals
 Provide one universal set of scripting bindings using powerful technologies such as WebAssembly with minimal overhead during interop with the host program. Fast memory mapped access to C struct data is used instead of reflection. 
 
+# Usage (WIP)
+Implementation / Project Scaffolding CLI can be found in the Toxoid Engine repository: https://github.com/toxoidengine/toxoid
+
 # Supported Platforms
 - Web
 - Mobile
