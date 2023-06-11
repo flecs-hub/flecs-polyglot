@@ -22,6 +22,7 @@ pub struct ecs_struct_desc_t {
 
 extern "C" {
     pub fn free(ptr: *mut c_void);
+    #[allow(clashing_extern_declarations)]
     pub fn ecs_struct_init(world: *mut ecs_world_t, desc: *const ecs_struct_desc_t)
         -> ecs_entity_t;
 }
@@ -129,7 +130,7 @@ pub unsafe fn flecs_component_get(name: *const c_char) -> ecs_entity_t {
 #[no_mangle]
 pub unsafe fn flecs_entity_create() -> ecs_entity_t {
     let world = *WORLD.as_mut().unwrap_unchecked();
-    let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
+    let ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ecs_entity_init(world, &ent_desc)
 }
 
