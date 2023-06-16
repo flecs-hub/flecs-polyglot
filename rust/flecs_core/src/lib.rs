@@ -8,10 +8,10 @@
 
 use std::ffi::{c_char, c_void};
 use std::mem::MaybeUninit;
-mod bindings {
+pub mod bindings {
     include!("./bindings.rs");
 }
-use bindings::*;
+pub use bindings::*;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
