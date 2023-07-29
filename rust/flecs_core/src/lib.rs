@@ -6,7 +6,7 @@
 #![allow(deref_nullptr)]
 #![allow(improper_ctypes)]
 
-use std::ffi::{c_char, c_void};
+use core::ffi::{c_char, c_void};
 use std::mem::MaybeUninit;
 pub mod bindings {
     include!("./bindings.rs");
@@ -330,6 +330,13 @@ pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) 
     let entities_slice = std::slice::from_raw_parts(entities, count as usize);
     let entity = entities_slice[index as usize];
     entity
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut u64 {
+    let world = *WORLD.as_mut().unwrap_unchecked();
+    let entities = (*iter).entities;
+    entities
 }
 
 #[no_mangle]
