@@ -311,9 +311,6 @@ pub unsafe fn flecs_query_field(
     count: u32,
     index: u32,
 ) -> *const c_void {
-    let world = *WORLD.as_mut().unwrap_unchecked();
-    // TODO: Have this size value already on the host side in stead of
-    // Looking up ecs_get_type_info every time
     let size = ecs_field_size(iter, term_index);
     let field = ecs_field_w_size(iter, size, term_index);
 
@@ -321,6 +318,35 @@ pub unsafe fn flecs_query_field(
     let ptrs_slice = std::slice::from_raw_parts(field, count as usize * size);
     let ptr = &ptrs_slice[index as usize * size];
     ptr as *const c_void
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_field_size(
+    iter: *mut ecs_iter_t,
+    term_index: i32,
+) -> usize {
+    ecs_field_size(iter, term_index)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_field_list(
+    iter: *mut ecs_iter_t,
+    term_index: i32,
+    count: u32
+) -> &'static mut [*const c_void] {
+    let size = ecs_field_size(iter, term_index);
+    let field = ecs_field_w_size(iter, size, term_index);
+    // Create pointer for an offset in field which is an array of component data
+    let ptrs_slice = std::slice::from_raw_parts(field, count as usize * size);
+    // Create a new vec and add new pointers to the component
+    // to the vector
+    let mut component_ptrs: Vec<*const c_void> = Vec::new();
+    for i in 0..count {
+        let ptr = &ptrs_slice[i as usize * size];
+        component_ptrs.push(ptr as *const c_void);
+    }
+    // Convert to slice and leak the box so it can be used on the guest side
+    Box::leak(component_ptrs.into_boxed_slice()) as &'static mut [*const c_void]
 }
 
 #[no_mangle]
