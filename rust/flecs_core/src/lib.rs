@@ -207,7 +207,7 @@ pub unsafe fn flecs_entity_add_tag(entity: u32, tag: u32) {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_entity_childof(entity: u32, parent: u32) {
+pub unsafe fn flecs_entity_child_of(entity: u32, parent: u32) {
     let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
