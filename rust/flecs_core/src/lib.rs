@@ -5,13 +5,22 @@
 #![allow(non_snake_case)]
 #![allow(deref_nullptr)]
 #![allow(improper_ctypes)]
-
 use core::ffi::{c_char, c_void};
-use std::mem::MaybeUninit;
+use std::{mem::MaybeUninit, sync::Mutex};
 pub mod bindings {
     include!("./bindings.rs");
 }
 pub use bindings::*;
+use lazy_static::lazy_static;
+
+
+pub struct World {
+    pub world: *mut bindings::ecs_world_t
+}
+unsafe impl Send for World {}
+lazy_static! {
+    pub static ref WORLD: Mutex<World> = Mutex::new(World{world: unsafe { ecs_init() }});
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -45,11 +54,8 @@ pub enum Type {
     F32Array,
 }
 
-pub static mut WORLD: Option<*mut ecs_world_t> = None;
-
 pub fn init() {
-    // Create a flecs world
-    unsafe { WORLD = Some(ecs_init()) }
+    WORLD.lock().unwrap().world;
 }
 
 unsafe fn get_member_type(member_type: u8) -> u64 {
@@ -78,7 +84,7 @@ pub unsafe fn flecs_component_create(
     member_types: *const *const u8,
     member_types_size: u32,
 ) -> ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
 
     // Create component entity description
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
@@ -110,7 +116,7 @@ pub unsafe fn flecs_component_create(
 
 #[no_mangle]
 pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
 
     // Create component entity description
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
@@ -122,21 +128,21 @@ pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t {
 
 #[no_mangle]
 pub unsafe fn flecs_component_get(name: *const c_char) -> ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let component_entity: ecs_entity_t = ecs_lookup(world, name);
     component_entity
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_create() -> ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ecs_entity_init(world, &ent_desc)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_create_named(name: *const c_char) -> ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.name = name;
     ecs_entity_init(world, &ent_desc)
@@ -144,7 +150,7 @@ pub unsafe fn flecs_entity_create_named(name: *const c_char) -> ecs_entity_t {
 
 #[no_mangle]
 pub unsafe fn flecs_entity_create_bulk(count: i32) -> *const ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.count = count;
     ecs_bulk_init(world, &ent_desc)
@@ -156,7 +162,7 @@ pub unsafe fn flecs_entity_create_bulk_components(
     component_count: u32,
     components: *const u32,
 ) -> *const ecs_entity_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let components = std::slice::from_raw_parts(components as *const u32, component_count as usize);
     let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.count = entity_count;
@@ -169,7 +175,7 @@ pub unsafe fn flecs_entity_create_bulk_components(
 
 #[no_mangle]
 pub unsafe fn flecs_entity_get_component(entity: u32, component: u32) -> *mut c_void {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     ecs_get_mut_id(world, entity, component)
@@ -177,7 +183,7 @@ pub unsafe fn flecs_entity_get_component(entity: u32, component: u32) -> *mut c_
 
 #[no_mangle]
 pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_void {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     let component_ptr = ecs_get_mut_id(world, entity, component);
@@ -186,7 +192,7 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
 
 #[no_mangle]
 pub unsafe fn flecs_entity_remove_component(entity: u32, component: u32) {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     ecs_remove_id(world, entity, component)
@@ -194,7 +200,7 @@ pub unsafe fn flecs_entity_remove_component(entity: u32, component: u32) {
 
 #[no_mangle]
 pub unsafe fn flecs_entity_add_tag(entity: u32, tag: u32) {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let tag: ecs_entity_t = tag.try_into().unwrap_unchecked();
     ecs_add_id(world, entity, tag);
@@ -202,7 +208,7 @@ pub unsafe fn flecs_entity_add_tag(entity: u32, tag: u32) {
 
 #[no_mangle]
 pub unsafe fn flecs_entity_childof(entity: u32, parent: u32) {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
     let pair = ecs_make_pair(EcsChildOf, parent);
@@ -211,7 +217,7 @@ pub unsafe fn flecs_entity_childof(entity: u32, parent: u32) {
 
 #[no_mangle]
 pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let parent: ecs_entity_t = parent.try_into().unwrap_unchecked();
 
     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
@@ -239,7 +245,7 @@ pub unsafe fn flecs_query_create(ids: *mut i32, components_count: i32) -> *mut e
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut i32, components_count as usize);
 
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let mut desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
 
     // Iterate over ids
@@ -260,7 +266,7 @@ pub unsafe fn flecs_query_next(iter: *mut ecs_iter_t) -> bool {
 
 #[no_mangle]
 pub unsafe fn flecs_query_iter(query: *mut ecs_query_t) -> *mut ecs_iter_t {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let it = ecs_query_iter(world, query);
     let it_ptr = Box::into_raw(Box::new(it));
     it_ptr
@@ -290,7 +296,7 @@ pub unsafe fn flecs_query_iter_component(
     count: u32,
     component_id: u32,
 ) -> *const u8 {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
 
     // TODO: Have this size value already on the host side in stead of
     // Looking up ecs_get_type_info every time
@@ -351,7 +357,7 @@ pub unsafe fn flecs_query_field_list(
 
 #[no_mangle]
 pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) -> u64 {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entities = (*iter).entities;
     let entities_slice = std::slice::from_raw_parts(entities, count as usize);
     let entity = entities_slice[index as usize];
@@ -360,7 +366,7 @@ pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) 
 
 #[no_mangle]
 pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut u64 {
-    let world = *WORLD.as_mut().unwrap_unchecked();
+    let world = WORLD.lock().unwrap().world;
     let entities = (*iter).entities;
     entities
 }
