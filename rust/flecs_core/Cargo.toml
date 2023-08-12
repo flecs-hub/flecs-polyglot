@@ -8,3 +8,6 @@ cc = "1.0"
 
 [lib]
 crate-type = ["lib"]
+
+[dependencies]
+lazy_static = "1.4.0"
