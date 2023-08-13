@@ -81,7 +81,7 @@ pub unsafe fn flecs_component_create(
     component_name: *const c_char,
     member_names: *const *const c_char,
     member_names_count: u32,
-    member_types: *const *const u8,
+    member_types: *const u8,
     member_types_size: u32,
 ) -> ecs_entity_t {
     let world = WORLD.lock().unwrap().world;
@@ -98,9 +98,10 @@ pub unsafe fn flecs_component_create(
     struct_desc.members = [member; 32usize];
 
     let member_names =
-        std::slice::from_raw_parts(member_names as *const u32, member_names_count as usize);
+        std::slice::from_raw_parts(member_names as *const *const c_char, member_names_count as usize);
     let member_types =
         std::slice::from_raw_parts(member_types as *const u8, member_names_count as usize);
+
     // Iterate through member names
     for (index, member_name) in member_names.iter().enumerate() {
         let member_name = *member_name as *const c_char;
