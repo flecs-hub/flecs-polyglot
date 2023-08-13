@@ -224,9 +224,11 @@ pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t {
     term.id = ecs_make_pair(EcsChildOf, parent);
 
     let mut iter = ecs_term_iter(world, &mut term);
-
+     
     // Convert iter to raw pointer
     let iter_ptr: *mut ecs_iter_t = &mut iter;
+    // TODO: Find out why without there there is a race condition
+    println!("Iter: {:?}", iter_ptr);
     iter_ptr
 }
 
@@ -573,6 +575,12 @@ pub unsafe fn flecs_component_get_member_f32array(
 ) -> *mut f32 {
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut f32;
     *member_ptr as *mut f32
+}
+
+#[no_mangle]
+pub unsafe fn flecs_progress(delta_time: f32) -> bool {
+    let world = WORLD.lock().unwrap().world;
+    ecs_progress(world, delta_time)
 }
 
 #[no_mangle]
