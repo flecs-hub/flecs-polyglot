@@ -228,13 +228,6 @@ pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t {
     
     // Convert iter to raw pointer
     let iter_ptr: *mut ecs_iter_t = &mut iter;
-
-    // Prevent iter from being dropped and its memory from being reclaimed
-    // core::mem::forget(iter);
-
-    // TODO: Find out why without there there is a race condition
-    // println!("Iter: {:?}", iter_ptr);
-    
     iter_ptr
 }
 
@@ -624,7 +617,6 @@ pub unsafe fn flecs_filter_next(iter: *mut ecs_iter_t) -> bool {
 pub unsafe fn flecs_iter_entities(iter: *mut ecs_iter_t) -> &'static [u64] {
     let entities = (*iter).entities;
     let entities_slice = std::slice::from_raw_parts(entities, (*iter).count as usize);
-    // println!("Entities Slice: {:?}", entities_slice);
     entities_slice
 }
 
