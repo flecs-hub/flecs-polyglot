@@ -225,17 +225,22 @@ pub unsafe fn flecs_entity_children(parent: u32) -> *mut ecs_iter_t {
     term.id = ecs_make_pair(EcsChildOf, parent);
 
     let mut iter = ecs_term_iter(world, &mut term);
-     
+    
     // Convert iter to raw pointer
     let iter_ptr: *mut ecs_iter_t = &mut iter;
+
+    // Prevent iter from being dropped and its memory from being reclaimed
+    // core::mem::forget(iter);
+
     // TODO: Find out why without there there is a race condition
-    println!("Iter: {:?}", iter_ptr);
+    // println!("Iter: {:?}", iter_ptr);
+    
     iter_ptr
 }
 
 #[no_mangle]
-pub unsafe fn flecs_term_next(iter: *mut ecs_iter_t) {
-    ecs_term_next(iter);
+pub unsafe fn flecs_term_next(iter: *mut ecs_iter_t) -> bool {
+    ecs_term_next(iter)
 }
 
 #[no_mangle]
@@ -285,7 +290,7 @@ pub unsafe fn flecs_iter_count(iter: *mut ecs_iter_t) -> i32 {
 // That's why there is an array of arrays. The first array is the first component type as an array of pointers
 
 #[no_mangle]
-pub unsafe fn flecs_query_iter_ptrs(
+pub unsafe fn flecs_iter_ptrs(
     iter: *mut ecs_iter_t,
     component_query_index: u32,
 ) -> *mut *mut c_void {
@@ -582,6 +587,44 @@ pub unsafe fn flecs_component_get_member_f32array(
 pub unsafe fn flecs_progress(delta_time: f32) -> bool {
     let world = WORLD.lock().unwrap().world;
     ecs_progress(world, delta_time)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_make_pair(relation: u32, object: u32) -> u64 {
+    let relation: ecs_entity_t = relation.try_into().unwrap_unchecked();
+    let object: ecs_entity_t = object.try_into().unwrap_unchecked();
+    ecs_make_pair(relation, object)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_children_init(id: ecs_entity_t) -> *mut ecs_filter_t {
+    let world = WORLD.lock().unwrap().world;
+    let mut desc: ecs_filter_desc_t = MaybeUninit::zeroed().assume_init();
+    desc.terms[0].id = ecs_make_pair(EcsChildOf, id);
+    desc.terms[1].id = EcsPrefab;
+    desc.terms[1].oper = ecs_oper_kind_t_EcsOptional;
+    ecs_filter_init(world, &desc)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_iter(filter: *mut ecs_filter_t) -> *mut ecs_iter_t {
+    let world = WORLD.lock().unwrap().world;
+    let it = ecs_filter_iter(world, filter);
+    let it_ptr = Box::into_raw(Box::new(it));
+    it_ptr
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_next(iter: *mut ecs_iter_t) -> bool {
+    ecs_filter_next(iter)
+}
+
+
+#[no_mangle]
+pub unsafe fn flecs_iter_entities(iter: *mut ecs_iter_t) -> &'static [u64] {
+    let entities = (*iter).entities;
+    let entities_slice = std::slice::from_raw_parts(entities, (*iter).count as usize);
+    entities_slice
 }
 
 #[no_mangle]
