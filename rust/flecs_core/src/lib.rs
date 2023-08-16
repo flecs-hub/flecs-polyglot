@@ -624,7 +624,15 @@ pub unsafe fn flecs_filter_next(iter: *mut ecs_iter_t) -> bool {
 pub unsafe fn flecs_iter_entities(iter: *mut ecs_iter_t) -> &'static [u64] {
     let entities = (*iter).entities;
     let entities_slice = std::slice::from_raw_parts(entities, (*iter).count as usize);
+    // println!("Entities Slice: {:?}", entities_slice);
     entities_slice
+}
+
+#[no_mangle]
+pub unsafe fn flecs_delete_entity(entity: u32) {
+    let world = WORLD.lock().unwrap().world;
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    ecs_delete(world, entity);
 }
 
 #[no_mangle]
