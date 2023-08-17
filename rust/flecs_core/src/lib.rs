@@ -187,6 +187,7 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
+    println!("World, entity, component: {:?}, {:?}, {:?}", world, entity, component);
     let component_ptr = ecs_get_mut_id(world, entity, component);
     component_ptr
 }
@@ -633,6 +634,13 @@ pub unsafe fn flecs_entity_has_component(entity: u32, component: u32) -> bool {
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
     ecs_has_id(world, entity, component)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_is_valid(entity: u32) -> bool {
+    let world = WORLD.lock().unwrap().world;
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    ecs_is_valid(world, entity)
 }
 
 #[no_mangle]
