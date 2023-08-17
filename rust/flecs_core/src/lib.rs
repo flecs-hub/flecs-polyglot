@@ -187,7 +187,7 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
-    println!("World, entity, component: {:?}, {:?}, {:?}", world, entity, component);
+    // println!("World, entity, component: {:?}, {:?}, {:?}", world, entity, component);
     let component_ptr = ecs_get_mut_id(world, entity, component);
     component_ptr
 }
