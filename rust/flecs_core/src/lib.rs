@@ -628,6 +628,14 @@ pub unsafe fn flecs_delete_entity(entity: u32) {
 }
 
 #[no_mangle]
+pub unsafe fn flecs_entity_has_component(entity: u32, component: u32) -> bool {
+    let world = WORLD.lock().unwrap().world;
+    let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
+    let component: ecs_entity_t = component.try_into().unwrap_unchecked();
+    ecs_has_id(world, entity, component)
+}
+
+#[no_mangle]
 pub unsafe fn m_free(ptr: *mut c_void) {
     free(ptr as *mut c_void)
 }
