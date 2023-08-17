@@ -60,19 +60,19 @@ pub fn init() {
 
 unsafe fn get_member_type(member_type: u8) -> u64 {
     match member_type {
-        0 => FLECS__Eecs_u8_t,
-        1 => FLECS__Eecs_u16_t,
-        2 => FLECS__Eecs_u32_t,
-        3 => FLECS__Eecs_u64_t,
-        4 => FLECS__Eecs_i8_t,
-        5 => FLECS__Eecs_i16_t,
-        6 => FLECS__Eecs_i32_t,
-        7 => FLECS__Eecs_i64_t,
-        8 => FLECS__Eecs_f32_t,
-        9 => FLECS__Eecs_f64_t,
-        10 => FLECS__Eecs_bool_t,
-        11 => FLECS__Eecs_string_t,
-        _ => FLECS__Eecs_uptr_t,
+        0 => FLECS_IDecs_u8_tID_,
+        1 => FLECS_IDecs_u16_tID_,
+        2 => FLECS_IDecs_u32_tID_,
+        3 => FLECS_IDecs_u64_tID_,
+        4 => FLECS_IDecs_i8_tID_,
+        5 => FLECS_IDecs_i16_tID_,
+        6 => FLECS_IDecs_i32_tID_,
+        7 => FLECS_IDecs_i64_tID_,
+        8 => FLECS_IDecs_f32_tID_,
+        9 => FLECS_IDecs_f64_tID_,
+        10 => FLECS_IDecs_bool_tID_,
+        11 => FLECS_IDecs_string_tID_,
+        _ => FLECS_IDecs_u8_tID_,
     }
 }
 
@@ -187,7 +187,7 @@ pub unsafe fn flecs_entity_add_component(entity: u32, component: u32) -> *mut c_
     let world = WORLD.lock().unwrap().world;
     let entity: ecs_entity_t = entity.try_into().unwrap_unchecked();
     let component: ecs_entity_t = component.try_into().unwrap_unchecked();
-    println!("World, entity, component: {:?}, {:?}, {:?}", world, entity, component);
+    // println!("World, entity, component: {:?}, {:?}, {:?}", world, entity, component);
     let component_ptr = ecs_get_mut_id(world, entity, component);
     component_ptr
 }
