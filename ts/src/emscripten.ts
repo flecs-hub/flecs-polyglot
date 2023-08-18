@@ -33,7 +33,7 @@ export interface CoreAPI {
     _flecs_entity_create_bulk: (count: u32) => Pointer,
     _flecs_entity_create_bulk_components: (entity_count: u32, component_count: u32, componenets: Pointer) => Pointer,
     _flecs_entity_get_component: (entity: EntityID, component: EntityID) => Pointer,
-    _flecs_entity_add_component: (entity: EntityID, component: EntityID) => Pointer,
+    _flecs_entity_add_component: (entity: EntityID, component: EntityID),
     _flecs_entity_remove_component: (entity: EntityID, component: EntityID) => void,
     _flecs_entity_add_tag: (entity: EntityID, tag: EntityID) => Pointer,
     _flecs_entity_childof: (entity: EntityID, parent: EntityID) => Pointer,
