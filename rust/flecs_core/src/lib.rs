@@ -183,13 +183,7 @@ pub unsafe fn flecs_singleton_add(component: ecs_entity_t) {
 #[no_mangle]
 pub unsafe fn flecs_singleton_get(component: ecs_entity_t) -> *mut c_void {
     let world = WORLD.lock().unwrap().world;
-    ecs_get_id(world, EcsWorld, component)
-}
-
-#[no_mangle]
-pub unsafe fn flecs_singleton_set(component: ecs_entity_t, ptr: *mut c_void) {
-    let world = WORLD.lock().unwrap().world;
-    ecs_set_ptr_id(world, EcsWorld, component, std::mem::transmute(ptr));
+    ecs_get_mut_id(world, EcsWorld, component)
 }
 
 #[no_mangle]
