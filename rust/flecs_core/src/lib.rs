@@ -7,20 +7,18 @@
 #![allow(improper_ctypes)]
 use core::ffi::{c_char, c_void};
 use std::{mem::MaybeUninit, sync::Mutex};
+use once_cell::sync::Lazy;
 pub mod bindings {
     include!("./bindings.rs");
 }
 pub use bindings::*;
-use lazy_static::lazy_static;
 
 
 pub struct World {
     pub world: *mut bindings::ecs_world_t
 }
 unsafe impl Send for World {}
-lazy_static! {
-    pub static ref WORLD: Mutex<World> = Mutex::new(World{world: unsafe { ecs_init() }});
-}
+pub static mut WORLD: Lazy<Mutex<World>> = Lazy::new(|| Mutex::new(World{world: unsafe { ecs_init() }}));
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -55,7 +53,7 @@ pub enum Type {
 }
 
 pub fn init() {
-    WORLD.lock().unwrap().world;
+    unsafe { WORLD.lock().unwrap().world };
 }
 
 unsafe fn get_member_type(member_type: u8) -> ecs_entity_t {
