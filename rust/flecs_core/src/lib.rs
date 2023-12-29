@@ -668,3 +668,52 @@ pub unsafe fn flecs_component_get_member_ptr(
     let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_void;
     *member_ptr as *mut c_void
 }
+
+#[no_mangle]
+pub unsafe fn flecs_system_init(
+    system_name: *const c_char,
+    // phase: i32,
+    ids: [ecs_id_t; 16],
+    callback: unsafe extern "C" fn(*mut ecs_iter_t)
+) -> ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+
+    // Set name
+    let mut entity_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
+    entity_desc.name = system_name;
+    let entity = ecs_entity_init(world, &entity_desc);
+
+    let mut system_desc: ecs_system_desc_t = MaybeUninit::zeroed().assume_init();
+    // system_desc.query.filter.terms = terms;
+
+    // Iterate over ids
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = (*id).try_into().unwrap();
+        // term.inout = ecs_inout_kind_t_EcsIn;
+        system_desc.query.filter.terms[index] = term;
+    }
+
+    system_desc.callback = Some(callback);
+    // system_desc.multi_threaded = true;
+
+    // system_desc.rate = 60;
+    // system_desc.tick_source = ecs_tick_source_t_EcsTickSourceManual;
+
+    ecs_system_init(world, &system_desc)
+}
+/*
+pub const ecs_inout_kind_t_EcsInOutDefault: ecs_inout_kind_t = 0;
+pub const ecs_inout_kind_t_EcsInOutNone: ecs_inout_kind_t = 1;
+pub const ecs_inout_kind_t_EcsInOut: ecs_inout_kind_t = 2;
+pub const ecs_inout_kind_t_EcsIn: ecs_inout_kind_t = 3;
+pub const ecs_inout_kind_t_EcsOut: ecs_inout_kind_t = 4;
+pub type ecs_inout_kind_t = ::std::os::raw::c_uint;
+pub const ecs_oper_kind_t_EcsAnd: ecs_oper_kind_t = 0;
+pub const ecs_oper_kind_t_EcsOr: ecs_oper_kind_t = 1;
+pub const ecs_oper_kind_t_EcsNot: ecs_oper_kind_t = 2;
+pub const ecs_oper_kind_t_EcsOptional: ecs_oper_kind_t = 3;
+pub const ecs_oper_kind_t_EcsAndFrom: ecs_oper_kind_t = 4;
+pub const ecs_oper_kind_t_EcsOrFrom: ecs_oper_kind_t = 5;
+pub const ecs_oper_kind_t_EcsNotFrom: ecs_oper_kind_t = 6;
+ */
