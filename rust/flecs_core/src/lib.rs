@@ -649,3 +649,22 @@ pub unsafe fn flecs_is_valid(entity: ecs_entity_t) -> bool {
 pub unsafe fn m_free(ptr: *mut c_void) {
     free(ptr as *mut c_void)
 }
+
+#[no_mangle]
+pub unsafe fn flecs_component_set_member_ptr(
+    component_ptr: *mut c_void,
+    offset: u32,
+    value: *mut c_void,
+) {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_void;
+    *member_ptr = value;
+}
+
+#[no_mangle]
+pub unsafe fn flecs_component_get_member_ptr(
+    component_ptr: *mut c_void,
+    offset: u32,
+) -> *mut c_void {
+    let member_ptr = (component_ptr as *mut u8).add(offset as usize) as *mut *mut c_void;
+    *member_ptr as *mut c_void
+}
