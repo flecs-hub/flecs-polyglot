@@ -247,21 +247,75 @@ pub unsafe fn flecs_child_entities(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
 }
 
 #[no_mangle]
-pub unsafe fn flecs_query_create(ids: *mut ecs_entity_t, components_count: i32) -> *mut ecs_query_t {
+pub unsafe fn flecs_query_create() -> *mut ecs_query_desc_t {
+    let desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
+    let desc = Box::new(desc);
+    let desc = Box::leak(desc);
+    desc as *mut ecs_query_desc_t
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_with(query_desc: *mut ecs_query_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
     // Slice from raw parts
-    let ids = std::slice::from_raw_parts(ids as *mut i32, components_count as usize);
+    let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
     let world = WORLD.lock().unwrap().world;
-    let mut desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
 
+    // Iterate over ids
+    let mut new_filter_index = 0;
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = *id;
+        term.oper = ecs_oper_kind_t_EcsAnd;
+        (*query_desc).filter.terms[filter_index as usize + index] = term;
+        new_filter_index = index;
+    }
+    new_filter_index as u8
+}
+
+
+#[no_mangle]
+pub unsafe fn flecs_query_without(query_desc: *mut ecs_query_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
+    // Slice from raw parts
+    let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
+
+    let world = WORLD.lock().unwrap().world;
+
+    // Iterate over ids
+    let mut new_filter_index = 0;
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = *id;
+        term.oper = ecs_oper_kind_t_EcsNot;
+        (*query_desc).filter.terms[filter_index as usize + index] = term;
+        new_filter_index = index;
+    }
+    new_filter_index as u8
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_with_or(query_desc: *mut ecs_query_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
+    // Slice from raw parts
+    let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
+
+    let world = WORLD.lock().unwrap().world;
+
+    let mut new_filter_index = 0;
     // Iterate over ids
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
-        term.id = (*id).try_into().unwrap();
-        desc.filter.terms[index] = term;
+        term.id = *id;
+        term.oper = ecs_oper_kind_t_EcsOr;
+        (*query_desc).filter.terms[filter_index as usize + index] = term;
+        new_filter_index = index;
     }
+    new_filter_index as u8
+}
 
-    let query: *mut ecs_query_t = ecs_query_init(world, &desc);
+#[no_mangle]
+pub unsafe fn flecs_query_build(desc: *mut ecs_query_desc_t) -> *mut ecs_query_t {
+    let world = WORLD.lock().unwrap().world;
+    let query: *mut ecs_query_t = ecs_query_init(world, desc);
     query
 }
 
