@@ -4,8 +4,11 @@ fn main() {
     println!("cargo:rerun-if-changed=flecs.h");
     println!("cargo:rerun-if-changed=flecs.c");
 
-    // Get rid of the warning about unused command line arguments from emcc
-    std::env::set_var("CFLAGS", "-Wno-unused-command-line-argument");
+    let target = std::env::var("TARGET").unwrap();
+        if !target.contains("emscripten") {
+        // Get rid of the warning about unused command line arguments from emcc
+        std::env::set_var("CFLAGS", "-Wno-unused-command-line-argument");
+    };
 
     // Compile Flecs
     cc::Build::new()
