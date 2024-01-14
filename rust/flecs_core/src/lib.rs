@@ -254,6 +254,7 @@ pub unsafe fn flecs_query_create() -> *mut ecs_query_desc_t {
     desc as *mut ecs_query_desc_t
 }
 
+
 #[no_mangle]
 pub unsafe fn flecs_query_with(query_desc: *mut ecs_query_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
     // Slice from raw parts
@@ -262,6 +263,11 @@ pub unsafe fn flecs_query_with(query_desc: *mut ecs_query_desc_t, filter_index: 
     let world = WORLD.lock().unwrap().world;
 
     // Iterate over ids
+    /*
+        The new filter index in the flecs_query_with function is used to keep track of the position where the next term should be added to the query's filter terms array. Each time a new term is added, the filter index is updated to the current index of the loop, which represents the last position used in the filter terms array. This is necessary because the function may be called multiple times to add multiple terms, and each call needs to know where to insert the next term without overwriting the existing ones.
+
+        The final value of new_filter_index is returned as a u8 so that the caller knows the next available index for adding additional terms if needed. This is important for building complex queries with multiple terms.
+    */
     let mut new_filter_index = 0;
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
@@ -426,6 +432,170 @@ pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) 
 
 #[no_mangle]
 pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+    let entities = (*iter).entities;
+    entities
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_create() -> *mut ecs_filter_desc_t {
+    let desc: ecs_filter_desc_t = MaybeUninit::zeroed().assume_init();
+    let desc = Box::new(desc);
+    let desc = Box::leak(desc);
+    desc as *mut ecs_filter_desc_t
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_with(filter_desc: *mut ecs_filter_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
+    // Slice from raw parts
+    let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
+
+    let world = WORLD.lock().unwrap().world;
+
+    // Iterate over ids
+    /*
+        The new filter index in the flecs_query_with function is used to keep track of the position where the next term should be added to the query's filter terms array. Each time a new term is added, the filter index is updated to the current index of the loop, which represents the last position used in the filter terms array. This is necessary because the function may be called multiple times to add multiple terms, and each call needs to know where to insert the next term without overwriting the existing ones.
+
+        The final value of new_filter_index is returned as a u8 so that the caller knows the next available index for adding additional terms if needed. This is important for building complex queries with multiple terms.
+    */
+    let mut new_filter_index = 0;
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = *id;
+        term.oper = ecs_oper_kind_t_EcsAnd;
+        (*filter_desc).terms[filter_index as usize + index] = term;
+        new_filter_index = index;
+    }
+    new_filter_index as u8
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_without(filter_desc: *mut ecs_filter_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
+    // Slice from raw parts
+    let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
+
+    let world = WORLD.lock().unwrap().world;
+
+    // Iterate over ids
+    let mut new_filter_index = 0;
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = *id;
+        term.oper = ecs_oper_kind_t_EcsNot;
+        (*filter_desc).terms[filter_index as usize + index] = term;
+        new_filter_index = index;
+    }
+    new_filter_index as u8
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_with_or(filter_desc: *mut ecs_filter_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
+    // Slice from raw parts
+    let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
+
+    let world = WORLD.lock().unwrap().world;
+
+    // Iterate over ids
+    let mut new_filter_index = 0;
+    for (index, id) in ids.iter().enumerate() {
+        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+        term.id = *id;
+        term.oper = ecs_oper_kind_t_EcsOr;
+        (*filter_desc).terms[filter_index as usize + index] = term;
+        new_filter_index = index;
+    }
+    new_filter_index as u8
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_build(desc: *mut ecs_filter_desc_t) -> *mut ecs_filter_t {
+    let world = WORLD.lock().unwrap().world;
+    let filter: *mut ecs_filter_t = ecs_filter_init(world, desc);
+    filter
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_next(iter: *mut ecs_iter_t) -> bool {
+    ecs_filter_next(iter)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_iter_component(
+    component_array_ptr: *mut u8,
+    component_index: u32,
+    count: u32,
+    component_id: ecs_entity_t,
+) -> *const u8 {
+    let world = WORLD.lock().unwrap().world;
+
+    // TODO: Have this size value already on the host side in stead of
+    // Looking up ecs_get_type_info every time
+    let component: ecs_entity_t = component_id;
+    let type_info = ecs_get_type_info(world, component);
+    let component_size = (*type_info).size as usize;
+
+    let ptrs_slice =
+        std::slice::from_raw_parts(component_array_ptr, count as usize * component_size);
+    let ptr = &ptrs_slice[(component_index as usize) * component_size];
+    ptr as *const u8
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_field(
+    iter: *mut ecs_iter_t,
+    term_index: i32,
+    count: u32,
+    index: u32,
+) -> *const c_void {
+    let size = ecs_field_size(iter, term_index);
+    let field = ecs_field_w_size(iter, size, term_index);
+
+    // Create pointer for an offset in field which is an array of component data
+    let ptrs_slice = std::slice::from_raw_parts(field, count as usize * size);
+    let ptr = &ptrs_slice[index as usize * size];
+    ptr as *const c_void
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_field_size(
+    iter: *mut ecs_iter_t,
+    term_index: i32,
+) -> usize {
+    ecs_field_size(iter, term_index)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_field_list(
+    iter: *mut ecs_iter_t,
+    term_index: i32,
+    count: u32
+) -> &'static mut [*const c_void] {
+    let size = ecs_field_size(iter, term_index);
+    let field = ecs_field_w_size(iter, size, term_index);
+    // Create pointer for an offset in field which is an array of component data
+    let ptrs_slice = std::slice::from_raw_parts(field, count as usize * size);
+    // Create a new vec and add new pointers to the component
+    // to the vector
+    let mut component_ptrs: Vec<*const c_void> = Vec::new();
+    for i in 0..count {
+        let ptr = &ptrs_slice[i as usize * size];
+        component_ptrs.push(ptr as *const c_void);
+    }
+    // Convert to slice and leak the box so it can be used on the guest side
+    Box::leak(component_ptrs.into_boxed_slice()) as &'static mut [*const c_void]
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_entity(iter: *mut ecs_iter_t, count: u32, index: u32) -> ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+    let entities = (*iter).entities;
+    let entities_slice = std::slice::from_raw_parts(entities, count as usize);
+    let entity = entities_slice[index as usize];
+    entity
+}
+
+#[no_mangle]
+pub unsafe fn flecs_filter_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
     let world = WORLD.lock().unwrap().world;
     let entities = (*iter).entities;
     entities
@@ -665,12 +835,6 @@ pub unsafe fn flecs_filter_iter(filter: *mut ecs_filter_t) -> *mut ecs_iter_t {
     let it_ptr = Box::into_raw(Box::new(it));
     it_ptr
 }
-
-#[no_mangle]
-pub unsafe fn flecs_filter_next(iter: *mut ecs_iter_t) -> bool {
-    ecs_filter_next(iter)
-}
-
 
 #[no_mangle]
 pub unsafe fn flecs_iter_entities(iter: *mut ecs_iter_t) -> &'static [ecs_entity_t] {
