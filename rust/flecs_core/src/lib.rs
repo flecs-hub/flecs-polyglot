@@ -140,6 +140,20 @@ pub unsafe fn flecs_entity_create() -> ecs_entity_t {
 }
 
 #[no_mangle]
+pub unsafe fn flecs_prefab_create() -> ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+    ecs_new_w_id(world, EcsPrefab)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_prefab_instance(prefab: ecs_entity_t) -> ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+    let ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
+    let pair = ecs_make_pair(EcsIsA, prefab);
+    ecs_new_w_id(world, pair)
+}
+
+#[no_mangle]
 pub unsafe fn flecs_entity_create_named(name: *const c_char) -> ecs_entity_t {
     let world = WORLD.lock().unwrap().world;
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
