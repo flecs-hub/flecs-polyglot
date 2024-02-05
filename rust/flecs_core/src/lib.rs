@@ -13,7 +13,6 @@ pub mod bindings {
 }
 pub use bindings::*;
 
-
 pub struct World {
     pub world: *mut bindings::ecs_world_t
 }
@@ -54,6 +53,22 @@ pub enum Type {
 
 pub fn init() {
     unsafe { WORLD.lock().unwrap().world };
+}
+
+// Generic function to iterate over an ecs_vector_t
+unsafe fn ecs_vector_each<T, F>(vector: *const ecs_vector_t, mut f: F)
+where
+    T: Sized,
+    F: FnMut(&T),
+{
+    let count = ecs_vector_count(vector) as isize;
+    let first = _ecs_vector_first(vector, std::mem::size_of::<T>() as i32, std::mem::align_of::<T>() as i16);
+    let mut current = first as *const T;
+
+    for _ in 0..count {
+        f(&*current);
+        current = current.offset(1);
+    }
 }
 
 unsafe fn get_member_type(member_type: u8) -> ecs_entity_t {
@@ -263,11 +278,8 @@ pub unsafe fn flecs_child_entities(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
 #[no_mangle]
 pub unsafe fn flecs_query_create() -> *mut ecs_query_desc_t {
     let desc: ecs_query_desc_t = MaybeUninit::zeroed().assume_init();
-    let desc = Box::new(desc);
-    let desc = Box::leak(desc);
-    desc as *mut ecs_query_desc_t
+    Box::into_raw(Box::new(desc))
 }
-
 
 #[no_mangle]
 pub unsafe fn flecs_query_with(query_desc: *mut ecs_query_desc_t, filter_index: u8, ids: *mut ecs_entity_t, components_count: i32) -> u8 {
@@ -454,9 +466,7 @@ pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_
 #[no_mangle]
 pub unsafe fn flecs_filter_create() -> *mut ecs_filter_desc_t {
     let desc: ecs_filter_desc_t = MaybeUninit::zeroed().assume_init();
-    let desc = Box::new(desc);
-    let desc = Box::leak(desc);
-    desc as *mut ecs_filter_desc_t
+    Box::into_raw(Box::new(desc))
 }
 
 #[no_mangle]
@@ -906,8 +916,9 @@ pub unsafe fn flecs_system_init(
     system_name: *const c_char,
     // phase: i32,
     ids: [ecs_id_t; 16],
-    callback: unsafe extern "C" fn(*mut ecs_iter_t)
-) -> ecs_entity_t {
+    callback: unsafe extern "C" fn(*mut ecs_iter_t),
+    framerate: f32
+) -> *mut ecs_system_desc_t {
     let world = WORLD.lock().unwrap().world;
 
     // Set name
@@ -932,7 +943,8 @@ pub unsafe fn flecs_system_init(
     // system_desc.rate = 60;
     // system_desc.tick_source = ecs_tick_source_t_EcsTickSourceManual;
 
-    ecs_system_init(world, &system_desc)
+    // ecs_system_init(world, &system_desc)
+    Box::into_raw(Box::new(system_desc))
 }
 /*
 pub const ecs_inout_kind_t_EcsInOutDefault: ecs_inout_kind_t = 0;
@@ -949,3 +961,23 @@ pub const ecs_oper_kind_t_EcsAndFrom: ecs_oper_kind_t = 4;
 pub const ecs_oper_kind_t_EcsOrFrom: ecs_oper_kind_t = 5;
 pub const ecs_oper_kind_t_EcsNotFrom: ecs_oper_kind_t = 6;
  */
+
+#[no_mangle]
+pub unsafe fn flecs_reflect_component(component_id: ecs_entity_t) {
+    let world = WORLD.lock().unwrap().world;
+    let component_ptr = ecs_get_mut_id(world, FLECS__EEcsStruct, component_id);
+    let ecs_struct = ecs_get_id(world, component_id, FLECS__EEcsStruct) as *const EcsStruct;
+    let members = (*ecs_struct).members;
+    ecs_vector_each::<ecs_member_t, _>(members, |item| {
+        println!("Member: {:?}", item);
+        // Do something with `item`, which is a reference to the current element of type `MyType`
+    });
+    // let cursor = ecs_meta_cursor(world, component_id, component_ptr);
+    // cursor.scope.iter().map(|scope| scope).for_each(|scope| {
+    //     let members = (*scope.ops).members;
+    //     let iter = flecs_hashmap_iter(members);
+    //     _flecs_hashmap_next(it, key_size, key_out, value_size)
+
+    // });
+    // FLECS__EEcsComponent
+}
