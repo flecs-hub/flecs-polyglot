@@ -431,7 +431,7 @@ pub unsafe fn flecs_query_field_list(
     iter: *mut ecs_iter_t,
     term_index: i32,
     count: u32
-) -> *mut c_void {
+) -> *mut [*const c_void] {
     let size = ecs_field_size(iter, term_index);
     let field = ecs_field_w_size(iter, size, term_index);
 
@@ -444,7 +444,7 @@ pub unsafe fn flecs_query_field_list(
     }
 
     let boxed_slice = component_ptrs.into_boxed_slice();
-    let raw_ptr = Box::into_raw(boxed_slice) as *mut c_void;
+    let raw_ptr = Box::into_raw(boxed_slice);
 
     raw_ptr
 }
@@ -464,6 +464,23 @@ pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_
     let entities = (*iter).entities;
     entities
 }
+
+/*
+#[no_mangle]
+pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+    let entities_ptr = (*iter).entities;
+
+    // Copy data into a new Vec
+    let entities = std::slice::from_raw_parts(entities_ptr, (*iter).count as usize).to_vec();
+
+    // Convert Vec into a boxed slice
+    let boxed_entities = entities.into_boxed_slice();
+
+    // Prevent the boxed slice from being deallocated automatically
+    Box::into_raw(boxed_entities) as *mut ecs_entity_t
+}
+*/
 
 #[no_mangle]
 pub unsafe fn flecs_filter_create() -> *mut ecs_filter_desc_t {
@@ -918,37 +935,38 @@ pub unsafe fn flecs_component_get_member_ptr(
 
 #[no_mangle]
 pub unsafe fn flecs_system_init(
-    system_name: *const c_char,
-    // phase: i32,
-    ids: [ecs_id_t; 16],
-    callback: unsafe extern "C" fn(*mut ecs_iter_t),
-    framerate: f32
+    // phase
+    // ids: [ecs_id_t; 16],
+    callback: unsafe extern "C" fn(*mut ecs_iter_t)
 ) -> *mut ecs_system_desc_t {
     let world = WORLD.lock().unwrap().world;
 
     // Set name
-    let mut entity_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
-    entity_desc.name = system_name;
-    let entity = ecs_entity_init(world, &entity_desc);
+    // let mut entity_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
+    // entity_desc.name = system_name;
+    // let entity = ecs_entity_init(world, &entity_desc);
 
-    let mut system_desc: ecs_system_desc_t = MaybeUninit::zeroed().assume_init();
+    
     // system_desc.query.filter.terms = terms;
 
     // Iterate over ids
-    for (index, id) in ids.iter().enumerate() {
-        let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
-        term.id = (*id).try_into().unwrap();
-        // term.inout = ecs_inout_kind_t_EcsIn;
-        system_desc.query.filter.terms[index] = term;
-    }
+    // for (index, id) in ids.iter().enumerate() {
+    //     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
+    //     term.id = (*id).try_into().unwrap();
+    //     // term.inout = ecs_inout_kind_t_EcsIn;
+    //     system_desc.query.filter.terms[index] = term;
+    // }
 
-    system_desc.callback = Some(callback);
+    
     // system_desc.multi_threaded = true;
 
     // system_desc.rate = 60;
     // system_desc.tick_source = ecs_tick_source_t_EcsTickSourceManual;
 
     // ecs_system_init(world, &system_desc)
+
+    let mut system_desc: ecs_system_desc_t = MaybeUninit::zeroed().assume_init();
+    system_desc.callback = Some(callback);
     Box::into_raw(Box::new(system_desc))
 }
 /*
