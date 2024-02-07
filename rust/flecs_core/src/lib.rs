@@ -465,6 +465,7 @@ pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_
     entities
 }
 
+// TODO: Take another look at whether this is nessecary, because we don't want to copy data
 /*
 #[no_mangle]
 pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
@@ -933,22 +934,26 @@ pub unsafe fn flecs_component_get_member_ptr(
     *member_ptr as *mut c_void
 }
 
-#[no_mangle]
-pub unsafe fn flecs_system_init(
-    // phase
-    // ids: [ecs_id_t; 16],
-    callback: unsafe extern "C" fn(*mut ecs_iter_t)
-) -> *mut ecs_system_desc_t {
+// Trampoline closure from Rust using C callback and binding_ctx field to call a Rust closure
+unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
     let world = WORLD.lock().unwrap().world;
+    let raw_callback = (*iter).binding_ctx as *mut fn(*mut ecs_iter_t);
+    if raw_callback.is_null() {
+        return;
+    }
+    let boxed_callback = unsafe { Box::from_raw(raw_callback) };
+    boxed_callback(iter);
+}
 
+#[no_mangle]
+pub unsafe fn flecs_system_create(
+    callback: fn(*mut c_void)
+) -> *mut ecs_system_desc_t {
     // Set name
     // let mut entity_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     // entity_desc.name = system_name;
     // let entity = ecs_entity_init(world, &entity_desc);
-
-    
     // system_desc.query.filter.terms = terms;
-
     // Iterate over ids
     // for (index, id) in ids.iter().enumerate() {
     //     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
@@ -956,34 +961,38 @@ pub unsafe fn flecs_system_init(
     //     // term.inout = ecs_inout_kind_t_EcsIn;
     //     system_desc.query.filter.terms[index] = term;
     // }
-
-    
     // system_desc.multi_threaded = true;
-
     // system_desc.rate = 60;
     // system_desc.tick_source = ecs_tick_source_t_EcsTickSourceManual;
-
     // ecs_system_init(world, &system_desc)
-
+    // let boxed_closure = unsafe { Box::from_raw(callback_closure as *mut Box<dyn Fn()>) };
+    // boxed_closure();
+    
     let mut system_desc: ecs_system_desc_t = MaybeUninit::zeroed().assume_init();
-    system_desc.callback = Some(callback);
+    let raw_closure = Box::into_raw(Box::new(callback));
+    system_desc.binding_ctx = raw_closure as *mut c_void;
+    system_desc.callback = Some(trampoline);
     Box::into_raw(Box::new(system_desc))
 }
-/*
-pub const ecs_inout_kind_t_EcsInOutDefault: ecs_inout_kind_t = 0;
-pub const ecs_inout_kind_t_EcsInOutNone: ecs_inout_kind_t = 1;
-pub const ecs_inout_kind_t_EcsInOut: ecs_inout_kind_t = 2;
-pub const ecs_inout_kind_t_EcsIn: ecs_inout_kind_t = 3;
-pub const ecs_inout_kind_t_EcsOut: ecs_inout_kind_t = 4;
-pub type ecs_inout_kind_t = ::std::os::raw::c_uint;
-pub const ecs_oper_kind_t_EcsAnd: ecs_oper_kind_t = 0;
-pub const ecs_oper_kind_t_EcsOr: ecs_oper_kind_t = 1;
-pub const ecs_oper_kind_t_EcsNot: ecs_oper_kind_t = 2;
-pub const ecs_oper_kind_t_EcsOptional: ecs_oper_kind_t = 3;
-pub const ecs_oper_kind_t_EcsAndFrom: ecs_oper_kind_t = 4;
-pub const ecs_oper_kind_t_EcsOrFrom: ecs_oper_kind_t = 5;
-pub const ecs_oper_kind_t_EcsNotFrom: ecs_oper_kind_t = 6;
- */
+
+#[no_mangle]
+pub unsafe fn flecs_system_build(
+    system_desc: *mut ecs_system_desc_t,
+) -> ecs_entity_t {
+    let world = WORLD.lock().unwrap().world;
+    let mut entity_desc: ecs_entity_desc_t = unsafe { MaybeUninit::zeroed().assume_init() };
+    // We have to add this pair so that the system is part of standard progress stage
+    entity_desc.add[0] = unsafe { ecs_make_pair(EcsDependsOn, EcsOnUpdate) };
+    (*system_desc).entity = ecs_entity_init(world, &entity_desc);
+    ecs_system_init(world, system_desc)
+}
+
+#[no_mangle]
+pub unsafe fn flecs_query_from_system_desc(
+    system_desc: *mut ecs_system_desc_t
+) -> *mut ecs_query_desc_t {
+    &mut (*system_desc).query as *mut ecs_query_desc_t
+}
 
 #[no_mangle]
 pub unsafe fn flecs_reflect_component(component_id: ecs_entity_t) {
