@@ -941,33 +941,15 @@ unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
     if raw_callback.is_null() {
         return;
     }
-    let boxed_callback = unsafe { Box::from_raw(raw_callback) };
-    boxed_callback(iter);
+    let callback = &*raw_callback; // Convert raw pointer to reference instead of Box so memory is borrowed and does
+    // not get freed when it goes out of scope
+    callback(iter); // Call the callback through the reference
 }
 
 #[no_mangle]
 pub unsafe fn flecs_system_create(
     callback: fn(*mut c_void)
 ) -> *mut ecs_system_desc_t {
-    // Set name
-    // let mut entity_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
-    // entity_desc.name = system_name;
-    // let entity = ecs_entity_init(world, &entity_desc);
-    // system_desc.query.filter.terms = terms;
-    // Iterate over ids
-    // for (index, id) in ids.iter().enumerate() {
-    //     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
-    //     term.id = (*id).try_into().unwrap();
-    //     // term.inout = ecs_inout_kind_t_EcsIn;
-    //     system_desc.query.filter.terms[index] = term;
-    // }
-    // system_desc.multi_threaded = true;
-    // system_desc.rate = 60;
-    // system_desc.tick_source = ecs_tick_source_t_EcsTickSourceManual;
-    // ecs_system_init(world, &system_desc)
-    // let boxed_closure = unsafe { Box::from_raw(callback_closure as *mut Box<dyn Fn()>) };
-    // boxed_closure();
-    
     let mut system_desc: ecs_system_desc_t = MaybeUninit::zeroed().assume_init();
     let raw_closure = Box::into_raw(Box::new(callback));
     system_desc.binding_ctx = raw_closure as *mut c_void;
