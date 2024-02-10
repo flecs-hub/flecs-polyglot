@@ -294,13 +294,13 @@ pub unsafe fn flecs_query_with(query_desc: *mut ecs_query_desc_t, filter_index: 
 
         The final value of new_filter_index is returned as a u8 so that the caller knows the next available index for adding additional terms if needed. This is important for building complex queries with multiple terms.
     */
-    let mut new_filter_index = 0;
+    let mut new_filter_index = filter_index;
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
         term.id = *id;
         term.oper = ecs_oper_kind_t_EcsAnd;
         (*query_desc).filter.terms[filter_index as usize + index] = term;
-        new_filter_index = index;
+        new_filter_index = index as u8;
     }
     new_filter_index as u8
 }
@@ -314,15 +314,15 @@ pub unsafe fn flecs_query_without(query_desc: *mut ecs_query_desc_t, filter_inde
     let world = WORLD.lock().unwrap().world;
 
     // Iterate over ids
-    let mut new_filter_index = 0;
+    let mut new_filter_index = filter_index;
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
         term.id = *id;
         term.oper = ecs_oper_kind_t_EcsNot;
         (*query_desc).filter.terms[filter_index as usize + index] = term;
-        new_filter_index = index;
+        new_filter_index = index as u8;
     }
-    new_filter_index as u8
+    new_filter_index 
 }
 
 #[no_mangle]
@@ -332,16 +332,16 @@ pub unsafe fn flecs_query_with_or(query_desc: *mut ecs_query_desc_t, filter_inde
 
     let world = WORLD.lock().unwrap().world;
 
-    let mut new_filter_index = 0;
+    let mut new_filter_index = filter_index;
     // Iterate over ids
     for (index, id) in ids.iter().enumerate() {
         let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
         term.id = *id;
         term.oper = ecs_oper_kind_t_EcsOr;
         (*query_desc).filter.terms[filter_index as usize + index] = term;
-        new_filter_index = index;
+        new_filter_index = index as u8;
     }
-    new_filter_index as u8
+    new_filter_index
 }
 
 #[no_mangle]
