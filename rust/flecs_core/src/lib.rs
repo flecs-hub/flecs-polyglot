@@ -937,13 +937,15 @@ pub unsafe fn flecs_component_get_member_ptr(
 // Trampoline closure from Rust using C callback and binding_ctx field to call a Rust closure
 unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
     let world = WORLD.lock().unwrap().world;
-    let raw_callback = (*iter).binding_ctx as *mut fn(*mut ecs_iter_t);
+    let raw_callback = (*iter).binding_ctx as *mut fn(&toxoid_api::Iter);
     if raw_callback.is_null() {
         return;
     }
     let callback = &*raw_callback; // Convert raw pointer to reference instead of Box so memory is borrowed and does
     // not get freed when it goes out of scope
-    callback(iter); // Call the callback through the reference
+    // Wrap the system / query iterator in a Rust struct with convenience methods
+    let iter = toxoid_api::Iter::from(iter as *mut c_void);
+    callback(&iter); // Call the callback through the reference
 }
 
 #[no_mangle]
