@@ -1,3 +1,5 @@
+use std::path::{PathBuf, Path};
+
 fn main() {
     // Tell cargo to invalidate the built crate whenever the sources change
     println!("cargo:rerun-if-changed=build.rs");
@@ -9,6 +11,17 @@ fn main() {
         // Get rid of the warning about unused command line arguments from emcc
         std::env::set_var("CFLAGS", "-Wno-unused-command-line-argument");
     };
+
+    // // Bindgen
+    // let bindings = bindgen::Builder::default()
+    //     .header(Path::new("flecs.h").to_str().unwrap())
+    //     .generate()
+    //     .expect("Unable to generate bindings");
+
+    // let out_path = PathBuf::from("./src");
+    // bindings
+    //     .write_to_file(out_path.join("bindings.rs"))
+    //     .expect("Couldn't write bindings!");
 
     // Compile Flecs
     cc::Build::new()

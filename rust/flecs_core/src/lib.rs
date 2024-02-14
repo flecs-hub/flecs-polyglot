@@ -56,13 +56,13 @@ pub fn init() {
 }
 
 // Generic function to iterate over an ecs_vector_t
-unsafe fn ecs_vector_each<T, F>(vector: *const ecs_vector_t, mut f: F)
+unsafe fn ecs_vector_each<T, F>(vector: *const ecs_vec_t, mut f: F)
 where
     T: Sized,
     F: FnMut(&T),
 {
-    let count = ecs_vector_count(vector) as isize;
-    let first = _ecs_vector_first(vector, std::mem::size_of::<T>() as i32, std::mem::align_of::<T>() as i16);
+    let count = ecs_vec_count(vector) as isize;
+    let first = ecs_vec_first(vector);
     let mut current = first as *const T;
 
     for _ in 0..count {
@@ -73,19 +73,19 @@ where
 
 unsafe fn get_member_type(member_type: u8) -> ecs_entity_t {
     match member_type {
-        0 => FLECS__Eecs_u8_t,
-        1 => FLECS__Eecs_u16_t,
-        2 => FLECS__Eecs_u32_t,
-        3 => FLECS__Eecs_u64_t,
-        4 => FLECS__Eecs_i8_t,
-        5 => FLECS__Eecs_i16_t,
-        6 => FLECS__Eecs_i32_t,
-        7 => FLECS__Eecs_i64_t,
-        8 => FLECS__Eecs_f32_t,
-        9 => FLECS__Eecs_f64_t,
-        10 => FLECS__Eecs_bool_t,
-        11 => FLECS__Eecs_string_t,
-        _ => FLECS__Eecs_uptr_t,
+        0 => FLECS_IDecs_u8_tID_,
+        1 => FLECS_IDecs_u16_tID_,
+        2 => FLECS_IDecs_u32_tID_,
+        3 => FLECS_IDecs_u64_tID_,
+        4 => FLECS_IDecs_i8_tID_,
+        5 => FLECS_IDecs_i16_tID_,
+        6 => FLECS_IDecs_i32_tID_,
+        7 => FLECS_IDecs_i64_tID_,
+        8 => FLECS_IDecs_f32_tID_,
+        9 => FLECS_IDecs_f64_tID_,
+        10 => FLECS_IDecs_bool_tID_,
+        11 => FLECS_IDecs_string_tID_,
+        _ => FLECS_IDecs_uptr_tID_,
     }
 }
 
@@ -981,10 +981,10 @@ pub unsafe fn flecs_query_from_system_desc(
 #[no_mangle]
 pub unsafe fn flecs_reflect_component(component_id: ecs_entity_t) {
     let world = WORLD.lock().unwrap().world;
-    let component_ptr = ecs_get_mut_id(world, FLECS__EEcsStruct, component_id);
-    let ecs_struct = ecs_get_id(world, component_id, FLECS__EEcsStruct) as *const EcsStruct;
+    let component_ptr = ecs_get_mut_id(world, FLECS_IDEcsStructID_, component_id);
+    let ecs_struct = ecs_get_id(world, component_id, FLECS_IDEcsStructID_) as *const EcsStruct;
     let members = (*ecs_struct).members;
-    ecs_vector_each::<ecs_member_t, _>(members, |item| {
+    ecs_vector_each::<ecs_member_t, _>(&members, |item| {
         println!("Member: {:?}", item);
         // Do something with `item`, which is a reference to the current element of type `MyType`
     });
