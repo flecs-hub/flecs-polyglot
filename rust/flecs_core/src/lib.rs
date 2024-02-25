@@ -997,3 +997,97 @@ pub unsafe fn flecs_reflect_component(component_id: ecs_entity_t) {
     // });
     // FLECS__EEcsComponent
 }
+
+use flexbuffers::Builder;
+use toxoid_serialize::NetworkMessageComponent;
+
+#[no_mangle]
+pub unsafe fn flecs_serialize_entity(entity: ecs_entity_t) -> Vec<NetworkMessageComponent> {
+    let world = WORLD.lock().unwrap().world;
+    // Network components
+    let mut network_components = Vec::new();
+    // Get the entity type
+    let entity_type: *const ecs_type_t  = ecs_get_type(world, entity);
+    // Get the type ids
+    let type_ids = (*entity_type).array;
+    let type_ids = std::slice::from_raw_parts(type_ids, (*entity_type).count as usize);
+    // Iterate over the type ids
+    for i in 0..(*entity_type).count {
+        // Create a new Flexbuffer builder.
+        let mut builder = Builder::default();
+        // Start a map
+        let mut component_serialized = builder.start_map();
+
+        // Get the component id
+        let component_id = type_ids[i as usize];
+        // Get the component name
+        let component_name = ecs_get_name(world, component_id);
+        let component_name = core::ffi::CStr::from_ptr(component_name).to_str().unwrap();
+
+        // Get the component pointer
+        let component_ptr = ecs_get_mut_id(world, FLECS_IDEcsStructID_, component_id);
+        // Get the component type
+        let ecs_struct = ecs_get_id(world, component_id, FLECS_IDEcsStructID_) as *const EcsStruct;
+        // Get the members of the component type
+        let members = (*ecs_struct).members;
+        ecs_vector_each::<ecs_member_t, _>(&members, |item| {
+            // Convert from *const i8 to &str
+            let name = core::ffi::CStr::from_ptr(item.name as *const i8).to_str().unwrap();
+            match item.type_ {
+                type_id if type_id == FLECS_IDecs_u8_tID_ => {
+                    let value = flecs_component_get_member_u8(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_u16_tID_ => {
+                    let value = flecs_component_get_member_u16(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_u32_tID_ => {
+                    let value = flecs_component_get_member_u32(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_u64_tID_ => {
+                    let value = flecs_component_get_member_u64(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_i8_tID_ => {
+                    let value = flecs_component_get_member_i8(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_i16_tID_ => {
+                    let value = flecs_component_get_member_i16(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_i32_tID_ => {
+                    let value = flecs_component_get_member_i32(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_i64_tID_ => {
+                    let value = flecs_component_get_member_i64(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_f32_tID_ => {
+                    let value = flecs_component_get_member_f32(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_f64_tID_ => {
+                    let value = flecs_component_get_member_f64(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                type_id if type_id == FLECS_IDecs_bool_tID_ => {
+                    let value = flecs_component_get_member_bool(component_ptr, item.offset as u32);
+                    component_serialized.push(name, value);
+                },
+                _ => eprintln!("Type not supported {:?}", item.type_),
+            }
+        });
+        component_serialized.end_map();
+        let component_data = builder.view().to_vec();
+        network_components
+            .push(NetworkMessageComponent {
+                name: component_name.to_string(),
+                data: component_data,
+            });
+    }
+    network_components
+}
