@@ -1158,6 +1158,7 @@ pub unsafe fn flecs_deserialize_entity_sync(entity_id: ecs_entity_t, components_
         });
 }
 
+#[derive(Debug)]
 pub enum DynamicType {
     U8(u8),
     U16(u16),
@@ -1172,11 +1173,10 @@ pub enum DynamicType {
     Bool(bool),
 }
 
-
 #[no_mangle]
-pub unsafe fn flecs_deserialize_entity(entity_id: ecs_entity_t, components_serialized: Vec<NetworkMessageComponent>) -> HashMap<String, HashMap<String, DynamicType>> {
+pub unsafe fn flecs_deserialize_entity(components_serialized: Vec<NetworkMessageComponent>) -> HashMap<String, HashMap<String, DynamicType>> {
     let world = WORLD.lock().unwrap().world;
-    let components_hashmap: HashMap<String, HashMap<String, DynamicType>> = HashMap::new();
+    let mut components_hashmap: HashMap<String, HashMap<String, DynamicType>> = HashMap::new();
     components_serialized
         .iter()
         .for_each(|component_serialized| {
@@ -1189,7 +1189,6 @@ pub unsafe fn flecs_deserialize_entity(entity_id: ecs_entity_t, components_seria
             let component_deserialized = flexbuffers::Reader::get_root(component_data.as_slice()).unwrap();
             let component_map = component_deserialized.as_map();
             let keys: Vec<&str> = component_map.iter_keys().collect();
-            let component_ptr = ecs_get_mut_id(world, entity_id, component_id);
             let mut component_hashmap: HashMap<String, DynamicType> = HashMap::new();
             ecs_vector_each::<ecs_member_t, _>(&members, |item| {
                 let name = core::ffi::CStr::from_ptr(item.name as *const i8).to_str().unwrap();
@@ -1243,6 +1242,7 @@ pub unsafe fn flecs_deserialize_entity(entity_id: ecs_entity_t, components_seria
                     _ => eprintln!("Type not supported {:?}", item.type_),
                 }
             });
+            components_hashmap.insert(component_serialized.name.clone(), component_hashmap);
         });
     components_hashmap
 }
