@@ -52,10 +52,6 @@ pub enum Type {
     F32Array,
 }
 
-pub fn init() {
-    unsafe { *WORLD };
-}
-
 // Generic function to iterate over an ecs_vector_t
 unsafe fn ecs_vector_each<T, F>(vector: *const ecs_vec_t, mut f: F)
 where
