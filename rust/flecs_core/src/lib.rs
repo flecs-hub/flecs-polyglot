@@ -18,13 +18,7 @@ use flexbuffers::{Builder, Reader};
 use std::collections::HashMap;
 use toxoid_serialize::NetworkMessageComponent;
 
-pub struct World {
-    pub world: *mut bindings::ecs_world_t
-}
-
-unsafe impl Send for World {}
-
-pub static mut WORLD: Lazy<Mutex<World>> = Lazy::new(|| Mutex::new(World{world: unsafe { ecs_init() }}));
+pub static mut WORLD: Lazy<*mut bindings::ecs_world_t> = Lazy::new(|| unsafe { ecs_init() });
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -59,7 +53,7 @@ pub enum Type {
 }
 
 pub fn init() {
-    unsafe { WORLD.lock().unwrap().world };
+    unsafe { *WORLD };
 }
 
 // Generic function to iterate over an ecs_vector_t
@@ -104,7 +98,7 @@ pub unsafe fn flecs_component_create(
     member_types: *const u8,
     member_types_size: u32,
 ) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Create component entity description
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
@@ -137,7 +131,7 @@ pub unsafe fn flecs_component_create(
 
 #[no_mangle]
 pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Create component entity description
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
@@ -149,27 +143,27 @@ pub unsafe fn flecs_tag_create(tag_name: *const c_char) -> ecs_entity_t {
 
 #[no_mangle]
 pub unsafe fn flecs_component_get(name: *const c_char) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let component_entity: ecs_entity_t = ecs_lookup(world, name);
     component_entity
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_create() -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ecs_entity_init(world, &ent_desc)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_prefab_create() -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_new_w_id(world, EcsPrefab)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_prefab_instance(prefab: ecs_entity_t) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     let pair = ecs_make_pair(EcsIsA, prefab);
     ecs_new_w_id(world, pair)
@@ -177,7 +171,7 @@ pub unsafe fn flecs_prefab_instance(prefab: ecs_entity_t) -> ecs_entity_t {
 
 #[no_mangle]
 pub unsafe fn flecs_entity_create_named(name: *const c_char) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.name = name;
     ecs_entity_init(world, &ent_desc)
@@ -185,7 +179,7 @@ pub unsafe fn flecs_entity_create_named(name: *const c_char) -> ecs_entity_t {
 
 #[no_mangle]
 pub unsafe fn flecs_entity_create_bulk(count: i32) -> *const ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.count = count;
     ecs_bulk_init(world, &ent_desc)
@@ -197,7 +191,7 @@ pub unsafe fn flecs_entity_create_bulk_components(
     component_count: u32,
     components: *const u32,
 ) -> *const ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let components = std::slice::from_raw_parts(components as *const ecs_entity_t, component_count as usize);
     let mut ent_desc: ecs_bulk_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.count = entity_count;
@@ -210,56 +204,56 @@ pub unsafe fn flecs_entity_create_bulk_components(
 
 #[no_mangle]
 pub unsafe fn flecs_singleton_add(component: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_add_id(world, EcsWorld, component);
 }
 
 #[no_mangle]
 pub unsafe fn flecs_singleton_get(component: ecs_entity_t) -> *mut c_void {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_get_mut_id(world, EcsWorld, component)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_singleton_remove(component: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_remove_id(world, EcsWorld, component);
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_get_component(entity: ecs_entity_t, component: ecs_entity_t) -> *mut c_void {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_get_mut_id(world, entity, component)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_add_component(entity: ecs_entity_t, component: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let component_ptr = ecs_add_id(world, entity, component);
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_remove_component(entity: ecs_entity_t, component: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_remove_id(world, entity, component)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_add_tag(entity: ecs_entity_t, tag: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_add_id(world, entity, tag);
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_child_of(entity: ecs_entity_t, parent: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let pair = ecs_make_pair(EcsChildOf, parent);
     ecs_add_id(world, entity, pair);
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_children(parent: ecs_entity_t) -> *mut ecs_iter_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let parent: ecs_entity_t = parent;
 
     let mut term: ecs_term_t = MaybeUninit::zeroed().assume_init();
@@ -293,7 +287,7 @@ pub unsafe fn flecs_query_with(query_desc: *mut ecs_query_desc_t, filter_index: 
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Iterate over ids
     /*
@@ -318,7 +312,7 @@ pub unsafe fn flecs_query_without(query_desc: *mut ecs_query_desc_t, filter_inde
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Iterate over ids
     let mut new_filter_index = filter_index;
@@ -337,7 +331,7 @@ pub unsafe fn flecs_query_with_or(query_desc: *mut ecs_query_desc_t, filter_inde
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     let mut new_filter_index = filter_index;
     // Iterate over ids
@@ -353,7 +347,7 @@ pub unsafe fn flecs_query_with_or(query_desc: *mut ecs_query_desc_t, filter_inde
 
 #[no_mangle]
 pub unsafe fn flecs_query_build(desc: *mut ecs_query_desc_t) -> *mut ecs_query_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let query: *mut ecs_query_t = ecs_query_init(world, desc);
     query
 }
@@ -365,7 +359,7 @@ pub unsafe fn flecs_query_next(iter: *mut ecs_iter_t) -> bool {
 
 #[no_mangle]
 pub unsafe fn flecs_query_iter(query: *mut ecs_query_t) -> *mut ecs_iter_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let it = ecs_query_iter(world, query);
     let it_ptr = Box::into_raw(Box::new(it));
     it_ptr
@@ -395,7 +389,7 @@ pub unsafe fn flecs_query_iter_component(
     count: u32,
     component_id: ecs_entity_t,
 ) -> *const u8 {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // TODO: Have this size value already on the host side in stead of
     // Looking up ecs_get_type_info every time
@@ -458,7 +452,7 @@ pub unsafe fn flecs_query_field_list(
 
 #[no_mangle]
 pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entities = (*iter).entities;
     let entities_slice = std::slice::from_raw_parts(entities, count as usize);
     let entity = entities_slice[index as usize];
@@ -467,7 +461,7 @@ pub unsafe fn flecs_query_entity(iter: *mut ecs_iter_t, count: u32, index: u32) 
 
 #[no_mangle]
 pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entities = (*iter).entities;
     entities
 }
@@ -476,7 +470,7 @@ pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_
 /*
 #[no_mangle]
 pub unsafe fn flecs_query_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entities_ptr = (*iter).entities;
 
     // Copy data into a new Vec
@@ -501,7 +495,7 @@ pub unsafe fn flecs_filter_with(filter_desc: *mut ecs_filter_desc_t, filter_inde
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Iterate over ids
     /*
@@ -525,7 +519,7 @@ pub unsafe fn flecs_filter_without(filter_desc: *mut ecs_filter_desc_t, filter_i
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Iterate over ids
     let mut new_filter_index = 0;
@@ -544,7 +538,7 @@ pub unsafe fn flecs_filter_with_or(filter_desc: *mut ecs_filter_desc_t, filter_i
     // Slice from raw parts
     let ids = std::slice::from_raw_parts(ids as *mut u64, components_count as usize);
 
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // Iterate over ids
     let mut new_filter_index = 0;
@@ -560,7 +554,7 @@ pub unsafe fn flecs_filter_with_or(filter_desc: *mut ecs_filter_desc_t, filter_i
 
 #[no_mangle]
 pub unsafe fn flecs_filter_build(desc: *mut ecs_filter_desc_t) -> *mut ecs_filter_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let filter: *mut ecs_filter_t = ecs_filter_init(world, desc);
     filter
 }
@@ -577,7 +571,7 @@ pub unsafe fn flecs_filter_iter_component(
     count: u32,
     component_id: ecs_entity_t,
 ) -> *const u8 {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
 
     // TODO: Have this size value already on the host side in stead of
     // Looking up ecs_get_type_info every time
@@ -641,7 +635,7 @@ pub unsafe fn flecs_filter_field_list(
 
 #[no_mangle]
 pub unsafe fn flecs_filter_entity(iter: *mut ecs_iter_t, count: u32, index: u32) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entities = (*iter).entities;
     let entities_slice = std::slice::from_raw_parts(entities, count as usize);
     let entity = entities_slice[index as usize];
@@ -650,7 +644,7 @@ pub unsafe fn flecs_filter_entity(iter: *mut ecs_iter_t, count: u32, index: u32)
 
 #[no_mangle]
 pub unsafe fn flecs_filter_entity_list(iter: *mut ecs_iter_t) -> *mut ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entities = (*iter).entities;
     entities
 }
@@ -861,7 +855,7 @@ pub unsafe fn flecs_component_get_member_f32array(
 
 #[no_mangle]
 pub unsafe fn flecs_progress(delta_time: f32) -> bool {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_progress(world, delta_time)
 }
 
@@ -874,7 +868,7 @@ pub unsafe fn flecs_make_pair(relation: ecs_entity_t, object: ecs_entity_t) -> e
 
 #[no_mangle]
 pub unsafe fn flecs_filter_children_init(id: ecs_entity_t) -> *mut ecs_filter_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let mut desc: ecs_filter_desc_t = MaybeUninit::zeroed().assume_init();
     desc.terms[0].id = ecs_make_pair(EcsChildOf, id);
     desc.terms[1].id = EcsPrefab;
@@ -884,7 +878,7 @@ pub unsafe fn flecs_filter_children_init(id: ecs_entity_t) -> *mut ecs_filter_t 
 
 #[no_mangle]
 pub unsafe fn flecs_filter_iter(filter: *mut ecs_filter_t) -> *mut ecs_iter_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let it = ecs_filter_iter(world, filter);
     let it_ptr = Box::into_raw(Box::new(it));
     it_ptr
@@ -899,20 +893,20 @@ pub unsafe fn flecs_iter_entities(iter: *mut ecs_iter_t) -> &'static [ecs_entity
 
 #[no_mangle]
 pub unsafe fn flecs_delete_entity(entity: ecs_entity_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entity: ecs_entity_t = entity;
     ecs_delete(world, entity);
 }
 
 #[no_mangle]
 pub unsafe fn flecs_entity_has_component(entity: ecs_entity_t, component: ecs_entity_t) -> bool {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     ecs_has_id(world, entity, component)
 }
 
 #[no_mangle]
 pub unsafe fn flecs_is_valid(entity: ecs_entity_t) -> bool {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let entity: ecs_entity_t = entity;
     ecs_is_valid(world, entity)
 }
@@ -943,7 +937,7 @@ pub unsafe fn flecs_component_get_member_ptr(
 
 // Trampoline closure from Rust using C callback and binding_ctx field to call a Rust closure
 unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let raw_callback = (*iter).binding_ctx as *mut fn(&toxoid_api::Iter);
     if raw_callback.is_null() {
         return;
@@ -970,7 +964,7 @@ pub unsafe fn flecs_system_create(
 pub unsafe fn flecs_system_build(
     system_desc: *mut ecs_system_desc_t,
 ) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let mut entity_desc: ecs_entity_desc_t = unsafe { MaybeUninit::zeroed().assume_init() };
     // We have to add this pair so that the system is part of standard progress stage
     entity_desc.add[0] = unsafe { ecs_make_pair(EcsDependsOn, EcsOnUpdate) };
@@ -987,7 +981,7 @@ pub unsafe fn flecs_query_from_system_desc(
 
 #[no_mangle]
 pub unsafe fn flecs_serialize_component(entity_id: ecs_entity_t, component_id: ecs_entity_t) -> NetworkMessageComponent {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     // Get the component name
     let component_name = ecs_get_name(world, component_id);
     let component_name = core::ffi::CStr::from_ptr(component_name).to_str().unwrap();
@@ -1063,7 +1057,7 @@ pub unsafe fn flecs_serialize_component(entity_id: ecs_entity_t, component_id: e
 
 #[no_mangle]
 pub unsafe fn flecs_serialize_entity(entity_id: ecs_entity_t) -> Vec<NetworkMessageComponent> {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     // Network components
     let mut network_components = Vec::new();
     // Get the entity type
@@ -1088,7 +1082,7 @@ pub unsafe fn flecs_serialize_entity(entity_id: ecs_entity_t) -> Vec<NetworkMess
 
 #[no_mangle]
 pub unsafe fn flecs_deserialize_entity_sync(entity_id: ecs_entity_t, components_serialized: Vec<NetworkMessageComponent>) {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     components_serialized
         .iter()
         .for_each(|component_serialized| {
@@ -1175,7 +1169,7 @@ pub enum DynamicType {
 
 #[no_mangle]
 pub unsafe fn flecs_deserialize_entity(components_serialized: Vec<NetworkMessageComponent>) -> HashMap<String, HashMap<String, DynamicType>> {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let mut components_hashmap: HashMap<String, HashMap<String, DynamicType>> = HashMap::new();
     components_serialized
         .iter()
@@ -1249,7 +1243,7 @@ pub unsafe fn flecs_deserialize_entity(components_serialized: Vec<NetworkMessage
 
 #[no_mangle]
 pub unsafe fn flecs_component_lookup(name: *mut c_char) -> ecs_entity_t {
-    let world = WORLD.lock().unwrap().world;
+    let world = *WORLD;
     let component_id: ecs_entity_t = ecs_lookup(world, name);
     component_id
 }
