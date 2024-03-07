@@ -953,6 +953,7 @@ pub unsafe fn flecs_system_create(
     let raw_closure = Box::into_raw(Box::new(callback));
     system_desc.binding_ctx = raw_closure as *mut c_void;
     system_desc.callback = Some(trampoline);
+    system_desc.multi_threaded = true;
     Box::into_raw(Box::new(system_desc))
 }
 
