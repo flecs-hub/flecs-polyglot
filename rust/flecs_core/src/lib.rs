@@ -5,17 +5,20 @@
 #![allow(non_snake_case)]
 #![allow(deref_nullptr)]
 #![allow(improper_ctypes)]
+#![feature(thread_id_value)]
 
 pub mod bindings {
     include!("./bindings.rs");
 }
 pub use bindings::*;
 
-use core::ffi::{c_char, c_void};
-use std::{mem::MaybeUninit, sync::Mutex};
-use once_cell::sync::Lazy;
-use flexbuffers::{Builder, Reader};
+use std::mem::MaybeUninit;
 use std::collections::HashMap;
+#[cfg(feature = "multithread")]
+use std::thread::JoinHandle;
+use core::ffi::{c_char, c_void};
+use once_cell::sync::Lazy;
+use flexbuffers::Builder;
 use toxoid_serialize::NetworkMessageComponent;
 
 pub static mut WORLD: Lazy<*mut bindings::ecs_world_t> = Lazy::new(|| unsafe { ecs_init() });
@@ -29,6 +32,8 @@ pub struct ecs_struct_desc_t {
 
 extern "C" {
     pub fn free(ptr: *mut c_void);
+    #[cfg(feature = "multithread")]
+    pub fn pthread_self() -> i32;
     #[allow(clashing_extern_declarations)]
     pub fn ecs_struct_init(world: *mut ecs_world_t, desc: *const ecs_struct_desc_t)
         -> ecs_entity_t;
@@ -84,6 +89,54 @@ unsafe fn get_member_type(member_type: u8) -> ecs_entity_t {
         11 => FLECS_IDecs_string_tID_,
         _ => FLECS_IDecs_uptr_tID_,
     }
+}
+
+pub fn init() {
+    #[cfg(feature = "multithread")]
+    unsafe {
+        // Set ECS threads
+        // ecs_set_threads(*WORLD, 12);
+        #[cfg(feature = "multithread")] {
+            ecs_set_task_threads(*WORLD, 12);
+            ecs_os_api.task_new_ = Some(flecs_os_api_task_new);
+            ecs_os_api.task_join_ = Some(flecs_os_api_task_join);
+        }
+        // println!("Pthread ID from flecs init: {}", pthread_self());
+        // std::thread::spawn(move || {
+        //     println!("Pthread ID from Rust thread: {}", pthread_self());
+        // });
+    }
+}
+
+#[cfg(feature = "multithread")]
+#[no_mangle]
+pub unsafe extern "C" fn flecs_os_api_task_new(optional_callback: Option<unsafe extern "C" fn(*mut c_void) -> *mut c_void>, _ctx: *mut c_void) -> usize {
+    println!("From flecs_os_api_task_new");
+    let callback = optional_callback.unwrap();
+    let ctx_as_usize: usize = _ctx as usize;
+    let handle = std::thread::spawn(move || {
+        // println!("This system runs on this thread from flecs_os_api_task_new: {}", std::thread::ThreadId::as_u64(&std::thread::current().id()));
+        // println!("Pthread ID from flecs_os_api_task_new: {}", pthread_self());
+        // println!("From flecs_os_api_task_new thread");
+        // Back inside the new thread, cast it back to a raw pointer.
+        let _ctx_back: *mut c_void = ctx_as_usize as *mut c_void;
+        callback(_ctx_back);
+    });
+    Box::into_raw(Box::new(handle)) as *mut _ as usize
+}
+
+#[cfg(feature = "multithread")]
+#[no_mangle]
+pub unsafe extern "C" fn flecs_os_api_task_join(handle: usize) -> *mut c_void {
+    println!("From flecs_os_api_task_join");
+     // Convert back to the original Rust JoinHandle type
+     let handle: Box<JoinHandle<()>> = Box::from_raw(handle as *mut JoinHandle<()>);
+
+     // Wait for the thread to complete
+     handle.join().unwrap();
+
+    // Return a null pointer
+    std::ptr::null_mut()
 }
 
 #[no_mangle]
@@ -933,6 +986,8 @@ pub unsafe fn flecs_component_get_member_ptr(
 
 // Trampoline closure from Rust using C callback and binding_ctx field to call a Rust closure
 unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
+    // println!("This system runs on this thread from trampoline: {}", std::thread::ThreadId::as_u64(&std::thread::current().id()));
+    // println!("Pthread ID from trampoline: {}", pthread_self());
     let world = *WORLD;
     let raw_callback = (*iter).binding_ctx as *mut fn(&toxoid_api::Iter);
     if raw_callback.is_null() {
@@ -953,7 +1008,9 @@ pub unsafe fn flecs_system_create(
     let raw_closure = Box::into_raw(Box::new(callback));
     system_desc.binding_ctx = raw_closure as *mut c_void;
     system_desc.callback = Some(trampoline);
-    system_desc.multi_threaded = true;
+    #[cfg(feature = "multithread")] {
+        system_desc.multi_threaded = true;
+    }
     Box::into_raw(Box::new(system_desc))
 }
 
