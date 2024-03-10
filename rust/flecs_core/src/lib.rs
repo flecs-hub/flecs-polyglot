@@ -5,7 +5,7 @@
 #![allow(non_snake_case)]
 #![allow(deref_nullptr)]
 #![allow(improper_ctypes)]
-#![feature(thread_id_value)]
+// #![feature(thread_id_value)]
 
 pub mod bindings {
     include!("./bindings.rs");
