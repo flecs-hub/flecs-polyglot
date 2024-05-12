@@ -987,15 +987,15 @@ unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
     // println!("This system runs on this thread from trampoline: {}", std::thread::ThreadId::as_u64(&std::thread::current().id()));
     // println!("Pthread ID from trampoline: {}", pthread_self());
     let world = *WORLD;
-    let raw_callback = (*iter).binding_ctx as *mut fn(*mut ecs_iter_t);
+    let raw_callback = (*iter).binding_ctx as *mut fn(&toxoid_api::Iter);
     if raw_callback.is_null() {
         return;
     }
     let callback = &*raw_callback; // Convert raw pointer to reference instead of Box so memory is borrowed and does
     // not get freed when it goes out of scope
     // Wrap the system / query iterator in a Rust struct with convenience methods
-    let iter = iter as *mut ecs_iter_t;
-    callback(iter); // Call the callback through the reference
+    let iter = toxoid_api::Iter::from(iter as *mut c_void);
+    callback(&iter); // Call the callback through the reference
 }
 
 #[no_mangle]
