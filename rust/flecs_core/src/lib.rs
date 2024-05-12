@@ -18,8 +18,6 @@ use std::collections::HashMap;
 use std::thread::JoinHandle;
 use core::ffi::{c_char, c_void};
 use once_cell::sync::Lazy;
-use flexbuffers::Builder;
-use toxoid_serialize::NetworkMessageComponent;
 
 pub static mut WORLD: Lazy<*mut bindings::ecs_world_t> = Lazy::new(|| unsafe { ecs_init() });
 
@@ -58,7 +56,7 @@ pub enum Type {
 }
 
 // Generic function to iterate over an ecs_vector_t
-unsafe fn ecs_vector_each<T, F>(vector: *const ecs_vec_t, mut f: F)
+pub unsafe fn ecs_vector_each<T, F>(vector: *const ecs_vec_t, mut f: F)
 where
     T: Sized,
     F: FnMut(&T),
@@ -989,15 +987,15 @@ unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
     // println!("This system runs on this thread from trampoline: {}", std::thread::ThreadId::as_u64(&std::thread::current().id()));
     // println!("Pthread ID from trampoline: {}", pthread_self());
     let world = *WORLD;
-    let raw_callback = (*iter).binding_ctx as *mut fn(&toxoid_api::Iter);
+    let raw_callback = (*iter).binding_ctx as *mut fn(*mut ecs_iter_t);
     if raw_callback.is_null() {
         return;
     }
     let callback = &*raw_callback; // Convert raw pointer to reference instead of Box so memory is borrowed and does
     // not get freed when it goes out of scope
     // Wrap the system / query iterator in a Rust struct with convenience methods
-    let iter = toxoid_api::Iter::from(iter as *mut c_void);
-    callback(&iter); // Call the callback through the reference
+    let iter = iter as *mut ecs_iter_t;
+    callback(iter); // Call the callback through the reference
 }
 
 #[no_mangle]
@@ -1031,268 +1029,6 @@ pub unsafe fn flecs_query_from_system_desc(
     system_desc: *mut ecs_system_desc_t
 ) -> *mut ecs_query_desc_t {
     &mut (*system_desc).query as *mut ecs_query_desc_t
-}
-
-#[no_mangle]
-pub unsafe fn flecs_serialize_component(entity_id: ecs_entity_t, component_id: ecs_entity_t) -> NetworkMessageComponent {
-    let world = *WORLD;
-    // Get the component name
-    let component_name = ecs_get_name(world, component_id);
-    let component_name = core::ffi::CStr::from_ptr(component_name).to_str().unwrap();
-    // Get the component struct pointer
-    let component_struct_ptr = ecs_get_mut_id(world, FLECS_IDEcsStructID_, component_id);
-    // Get the component type
-    let ecs_struct = ecs_get_id(world, component_id, FLECS_IDEcsStructID_) as *const EcsStruct;
-    // Get the members of the component type
-    let members = (*ecs_struct).members;
-    // Create a new Flexbuffer builder.
-    let mut builder = Builder::default();
-    // Start a map
-    let mut component_serialized = builder.start_map();
-    let component_ptr = ecs_get_mut_id(world, entity_id, component_id);
-    ecs_vector_each::<ecs_member_t, _>(&members, |item| {
-        // Convert from *const i8 to &str
-        let name = core::ffi::CStr::from_ptr(item.name as *const i8).to_str().unwrap();
-        match item.type_ {
-            type_id if type_id == FLECS_IDecs_u8_tID_ => {
-                let value = flecs_component_get_member_u8(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_u16_tID_ => {
-                let value = flecs_component_get_member_u16(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_u32_tID_ => {
-                let value = flecs_component_get_member_u32(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_u64_tID_ => {
-                let value = flecs_component_get_member_u64(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_i8_tID_ => {
-                let value = flecs_component_get_member_i8(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_i16_tID_ => {
-                let value = flecs_component_get_member_i16(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_i32_tID_ => {
-                let value = flecs_component_get_member_i32(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_i64_tID_ => {
-                let value = flecs_component_get_member_i64(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_f32_tID_ => {
-                let value = flecs_component_get_member_f32(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_f64_tID_ => {
-                let value = flecs_component_get_member_f64(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            type_id if type_id == FLECS_IDecs_bool_tID_ => {
-                let value = flecs_component_get_member_bool(component_ptr, item.offset as u32);
-                component_serialized.push(name, value);
-            },
-            _ => eprintln!("Type not supported {:?}", item.type_),
-        }
-    });
-    component_serialized.end_map();
-    let component_data = builder.view().to_vec();
-    NetworkMessageComponent {
-        name: component_name.to_string(),
-        data: component_data,
-    }
-}
-
-#[no_mangle]
-pub unsafe fn flecs_serialize_entity(entity_id: ecs_entity_t) -> Vec<NetworkMessageComponent> {
-    let world = *WORLD;
-    // Network components
-    let mut network_components = Vec::new();
-    // Get the entity type
-    let entity_type: *const ecs_type_t  = ecs_get_type(world, entity_id);
-    // Get the type ids
-    let type_ids = (*entity_type).array;
-    let type_ids = std::slice::from_raw_parts(type_ids, (*entity_type).count as usize);
-    // Iterate over the type ids
-    for i in 0..(*entity_type).count {
-        // Create a new Flexbuffer builder.
-        let mut builder = Builder::default();
-        // Start a map
-        let component_serialized = builder.start_map();
-
-        // Get the component id
-        let component_id = type_ids[i as usize];
-        let network_message_component = flecs_serialize_component(entity_id, component_id);
-        network_components.push(network_message_component);
-    }
-    network_components
-}
-
-#[no_mangle]
-pub unsafe fn flecs_deserialize_entity_sync(entity_id: ecs_entity_t, components_serialized: &[toxoid_api::MessageComponent]) {
-    let world = *WORLD;
-    components_serialized
-        .iter()
-        .for_each(|component_serialized| {
-            let component_name = std::ffi::CString::new(component_serialized.name).unwrap();
-            let component_id: ecs_entity_t = ecs_lookup(world, component_name.as_ptr());
-            let component_struct_ptr = ecs_get_mut_id(world, FLECS_IDEcsStructID_, component_id);
-            let ecs_struct = ecs_get_id(world, component_id, FLECS_IDEcsStructID_) as *const EcsStruct;
-            let members = (*ecs_struct).members;
-            let component_data = component_serialized.data;
-            let component_deserialized = flexbuffers::Reader::get_root(component_data).unwrap();
-            let component_map = component_deserialized.as_map();
-            let keys: Vec<&str> = component_map.iter_keys().collect();
-            let component_ptr = ecs_get_mut_id(world, entity_id, component_id);
-            ecs_vector_each::<ecs_member_t, _>(&members, |item| {
-                let name = core::ffi::CStr::from_ptr(item.name as *const i8).to_str().unwrap();
-                let value = component_map.idx(name);
-                match item.type_ {
-                    type_id if type_id == FLECS_IDecs_u8_tID_ => {
-                        let value = value.as_u8();
-                        // TODO: This is wrong, component_ptr is not the right pointer
-                        // It needs to point to entity, not the component struct type
-                        flecs_component_set_member_u8(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_u16_tID_ => {
-                        let value = value.as_u16();
-                        flecs_component_set_member_u16(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_u32_tID_ => {
-                        let value = value.as_u32();
-                        flecs_component_set_member_u32(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_u64_tID_ => {
-                        let value = value.as_u64();
-                        flecs_component_set_member_u64(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i8_tID_ => {
-                        let value = value.as_i8();
-                        flecs_component_set_member_i8(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i16_tID_ => {
-                        let value = value.as_i16();
-                        flecs_component_set_member_i16(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i32_tID_ => {
-                        let value = value.as_i32();
-                        flecs_component_set_member_i32(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i64_tID_ => {
-                        let value = value.as_i64();
-                        flecs_component_set_member_i64(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_f32_tID_ => {
-                        let value = value.as_f32();
-                        flecs_component_set_member_f32(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_f64_tID_ => {
-                        let value = value.as_f64();
-                        flecs_component_set_member_f64(component_ptr, item.offset as u32, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_bool_tID_ => {
-                        let value = value.as_bool();
-                        flecs_component_set_member_bool(component_ptr, item.offset as u32, value);
-                    },
-                    _ => eprintln!("Type not supported {:?}", item.type_),
-                }
-            });
-        });
-}
-
-#[derive(Debug)]
-pub enum DynamicType {
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
-    F32(f32),
-    F64(f64),
-    Bool(bool),
-}
-
-#[no_mangle]
-pub unsafe fn flecs_deserialize_entity(components_serialized: &[toxoid_api::MessageComponent]) -> HashMap<String, HashMap<String, DynamicType>> {
-    let world = *WORLD;
-    let mut components_hashmap: HashMap<String, HashMap<String, DynamicType>> = HashMap::new();
-    components_serialized
-        .iter()
-        .for_each(|component_serialized| {
-            let component_name = std::ffi::CString::new(component_serialized.name.clone()).unwrap();
-            let component_id: ecs_entity_t = ecs_lookup(world, component_name.as_ptr());
-            let component_struct_ptr = ecs_get_mut_id(world, FLECS_IDEcsStructID_, component_id);
-            let ecs_struct = ecs_get_id(world, component_id, FLECS_IDEcsStructID_) as *const EcsStruct;
-            let members = (*ecs_struct).members;
-            let component_data = component_serialized.data.clone();
-            let component_deserialized = flexbuffers::Reader::get_root(component_data).unwrap();
-            let component_map = component_deserialized.as_map();
-            let keys: Vec<&str> = component_map.iter_keys().collect();
-            let mut component_hashmap: HashMap<String, DynamicType> = HashMap::new();
-            ecs_vector_each::<ecs_member_t, _>(&members, |item| {
-                let name = core::ffi::CStr::from_ptr(item.name as *const i8).to_str().unwrap();
-                let value = component_map.idx(name);
-                let name = name.to_string();
-                match item.type_ {
-                    type_id if type_id == FLECS_IDecs_u8_tID_ => {
-                        let value = DynamicType::U8(value.as_u8());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_u16_tID_ => {
-                        let value = DynamicType::U16(value.as_u16());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_u32_tID_ => {
-                        let value = DynamicType::U32(value.as_u32());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_u64_tID_ => {
-                        let value = DynamicType::U64(value.as_u64());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i8_tID_ => {
-                        let value = DynamicType::I8(value.as_i8());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i16_tID_ => {
-                        let value = DynamicType::I16(value.as_i16());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i32_tID_ => {
-                        let value = DynamicType::I32(value.as_i32());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_i64_tID_ => {
-                        let value = DynamicType::I64(value.as_i64());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_f32_tID_ => {
-                        let value = DynamicType::F32(value.as_f32());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_f64_tID_ => {
-                        let value = DynamicType::F64(value.as_f64());
-                        component_hashmap.insert(name, value);
-                    },
-                    type_id if type_id == FLECS_IDecs_bool_tID_ => {
-                        let value = DynamicType::Bool(value.as_bool());
-                        component_hashmap.insert(name, value);
-                    },
-                    _ => eprintln!("Type not supported {:?}", item.type_),
-                }
-            });
-            components_hashmap.insert(component_serialized.name.to_string(), component_hashmap);
-        });
-    components_hashmap
 }
 
 #[no_mangle]

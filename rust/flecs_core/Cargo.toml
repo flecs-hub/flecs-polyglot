@@ -12,13 +12,6 @@ crate-type = ["lib"]
 
 [dependencies]
 once_cell = "1.19.0"
-# Temporary workaround until crate is published
-# Perhaps add a feature flag for this later if people would like to use this crate without toxoid
-# But this is TBD, as no one has requested this yet
-# Otherwise, being able to wrap the API in shared high level abstractions is very useful
-toxoid_api = { path="../../../../crates/toxoid_api" }
-toxoid_serialize = { path="../../../../crates/toxoid_serialize" }
-flexbuffers = "2.0.0"
 
 [features]
 default = []
