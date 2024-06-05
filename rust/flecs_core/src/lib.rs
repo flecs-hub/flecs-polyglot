@@ -1037,3 +1037,44 @@ pub unsafe fn flecs_component_lookup(name: *mut c_char) -> ecs_entity_t {
     let component_id: ecs_entity_t = ecs_lookup(world, name);
     component_id
 }
+
+#[no_mangle]
+pub unsafe fn flecs_entity_to_json(entity: ecs_entity_t) -> *mut c_char {
+    let world = *WORLD;
+    let mut json_desc: ecs_entity_to_json_desc_t = unsafe { MaybeUninit::zeroed().assume_init() };
+    json_desc.serialize_base = true;
+    json_desc.serialize_ids = true;
+    json_desc.serialize_values = true;
+    json_desc.serialize_refs = EcsChildOf;
+    json_desc.serialize_path = true;
+    json_desc.serialize_label = true;
+    // json_desc.serialize_id_labels = true;
+    // json_desc.serialize_type_info = true;
+    // json_desc.serialize_hidden = true;
+    // json_desc.serialize_matches = true;
+    // json_desc.serialize_private = true;
+
+    let json: *mut c_char = ecs_entity_to_json(world, entity, &json_desc);
+    // Print *mut c_char as rust string
+    let json_str = std::ffi::CStr::from_ptr(json).to_str().unwrap();
+
+    // Pretty print rust json
+    // let json: serde_json::Value = serde_json::from_str(json_str).unwrap();
+    // let json_str = serde_json::to_string_pretty(&json).unwrap();
+    // println!("JSON: {}", json_str);
+    println!("JSON: {}", json_str);
+    json
+}
+
+#[no_mangle]
+pub unsafe fn flecs_json_to_entity(json: *mut c_char) {
+    let world = *WORLD;
+    let json_desc: ecs_from_json_desc_t = unsafe { MaybeUninit::zeroed().assume_init() };
+    ecs_world_from_json(world, json, &json_desc);
+}
+
+#[no_mangle]
+pub unsafe fn flecs_entity_set_name(entity: ecs_entity_t, name: *mut c_char) {
+    let world = *WORLD;
+    ecs_set_name(world, entity, name);
+}
