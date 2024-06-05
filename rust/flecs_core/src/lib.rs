@@ -11,6 +11,7 @@ pub mod bindings {
     include!("./bindings.rs");
 }
 pub use bindings::*;
+use toxoid_api::make_c_string;
 
 use std::mem::MaybeUninit;
 use std::collections::HashMap;
@@ -151,6 +152,7 @@ pub unsafe fn flecs_component_create(
     let mut ent_desc: ecs_entity_desc_t = MaybeUninit::zeroed().assume_init();
     ent_desc.name = component_name;
     let component_entity: ecs_entity_t = ecs_entity_init(world, &ent_desc);
+    // println!("Component name: {:?} \n", std::ffi::CStr::from_ptr(component_name).to_str().unwrap());
 
     // Create runtime component description
     let mut struct_desc: ecs_struct_desc_t = MaybeUninit::zeroed().assume_init();
@@ -169,6 +171,7 @@ pub unsafe fn flecs_component_create(
         // Create component member
         let mut member: ecs_member_t = MaybeUninit::zeroed().assume_init();
         member.name = member_name;
+        // print!("Member name: {:?} \n", std::ffi::CStr::from_ptr(member_name).to_str().unwrap());
         member.type_ = get_member_type(member_types[index]);
         struct_desc.members[index] = member;
     }
@@ -276,7 +279,7 @@ pub unsafe fn flecs_entity_get_component(entity: ecs_entity_t, component: ecs_en
 #[no_mangle]
 pub unsafe fn flecs_entity_add_component(entity: ecs_entity_t, component: ecs_entity_t) {
     let world = *WORLD;
-    let component_ptr = ecs_add_id(world, entity, component);
+    ecs_add_id(world, entity, component);
 }
 
 #[no_mangle]
@@ -1053,24 +1056,26 @@ pub unsafe fn flecs_entity_to_json(entity: ecs_entity_t) -> *mut c_char {
     // json_desc.serialize_hidden = true;
     // json_desc.serialize_matches = true;
     // json_desc.serialize_private = true;
-
     let json: *mut c_char = ecs_entity_to_json(world, entity, &json_desc);
-    // Print *mut c_char as rust string
-    let json_str = std::ffi::CStr::from_ptr(json).to_str().unwrap();
-
-    // Pretty print rust json
-    // let json: serde_json::Value = serde_json::from_str(json_str).unwrap();
-    // let json_str = serde_json::to_string_pretty(&json).unwrap();
-    // println!("JSON: {}", json_str);
-    println!("JSON: {}", json_str);
     json
 }
 
 #[no_mangle]
 pub unsafe fn flecs_json_to_entity(json: *mut c_char) {
     let world = *WORLD;
-    let json_desc: ecs_from_json_desc_t = unsafe { MaybeUninit::zeroed().assume_init() };
-    ecs_world_from_json(world, json, &json_desc);
+    // let mut json_desc: ecs_from_json_desc_t = unsafe { MaybeUninit::zeroed().assume_init() };
+    // json_desc.strict = false;
+    // // // New Cstring from &str
+    // // let json = make_c_string("{\"ids\":[[\"Platypus\"]],\"values\":[{\"x\":10, \"y\":20}]}");
+    // // println!("Where the fuck is the entity?");
+    // let entity = flecs_entity_create();
+    // let entity = toxoid_api::Entity::from_id(entity as u64);
+    // let result = ecs_entity_from_json(world, entity.get_id(), json, std::ptr::null());
+    // println!("Result: {}", *result);
+    
+    // // println!("Entity has Position? {}", entity.has::<toxoid_api::components::Position>());
+    // let position = entity.get::<toxoid_api::components::Position>();
+    // println!("x: {}, y: {}", position.get_x(), position.get_y());
 }
 
 #[no_mangle]
