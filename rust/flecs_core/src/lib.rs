@@ -1067,7 +1067,6 @@ pub unsafe fn flecs_json_to_entity(json: *mut c_char) {
     // json_desc.strict = false;
     // // // New Cstring from &str
     // // let json = make_c_string("{\"ids\":[[\"Platypus\"]],\"values\":[{\"x\":10, \"y\":20}]}");
-    // // println!("Where the fuck is the entity?");
     // let entity = flecs_entity_create();
     // let entity = toxoid_api::Entity::from_id(entity as u64);
     // let result = ecs_entity_from_json(world, entity.get_id(), json, std::ptr::null());
