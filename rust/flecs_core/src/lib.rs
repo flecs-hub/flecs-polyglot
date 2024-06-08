@@ -985,8 +985,9 @@ pub unsafe fn flecs_component_get_member_ptr(
     *member_ptr as *mut c_void
 }
 
+#[no_mangle]
 // Trampoline closure from Rust using C callback and binding_ctx field to call a Rust closure
-unsafe extern "C" fn trampoline(iter: *mut ecs_iter_t) {
+pub unsafe extern "C" fn query_trampoline(iter: *mut ecs_iter_t) {
     // println!("This system runs on this thread from trampoline: {}", std::thread::ThreadId::as_u64(&std::thread::current().id()));
     // println!("Pthread ID from trampoline: {}", pthread_self());
     let world = *WORLD;
@@ -1008,7 +1009,7 @@ pub unsafe fn flecs_system_create(
     let mut system_desc: ecs_system_desc_t = MaybeUninit::zeroed().assume_init();
     let raw_closure = Box::into_raw(Box::new(callback));
     system_desc.binding_ctx = raw_closure as *mut c_void;
-    system_desc.callback = Some(trampoline);
+    system_desc.callback = Some(query_trampoline);
     #[cfg(feature = "multithread")] {
         system_desc.multi_threaded = true;
     }
