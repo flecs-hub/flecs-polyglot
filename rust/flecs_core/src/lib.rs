@@ -937,8 +937,12 @@ pub unsafe fn flecs_filter_iter(filter: *mut ecs_filter_t) -> *mut ecs_iter_t {
 #[no_mangle]
 pub unsafe fn flecs_iter_entities(iter: *mut ecs_iter_t) -> &'static [ecs_entity_t] {
     let entities = (*iter).entities;
-    let entities_slice = std::slice::from_raw_parts(entities, (*iter).count as usize);
-    entities_slice
+    if (*iter).count > 0 {
+        let entities_slice = std::slice::from_raw_parts(entities, (*iter).count as usize);
+        entities_slice
+    } else {
+        &[]
+    }
 }
 
 #[no_mangle]
