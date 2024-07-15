@@ -7,6 +7,18 @@
 #![allow(improper_ctypes)]
 // #![feature(thread_id_value)]
 
+#[cfg(windows)]
+extern crate winapi;
+#[cfg(windows)]
+use winapi::um::memoryapi::VirtualProtect;
+#[cfg(windows)]
+use winapi::um::errhandlingapi::GetLastError;
+#[cfg(windows)]
+use winapi::um::winnt::{PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_READ};
+#[cfg(windows)]
+use winapi::um::sysinfoapi::{GetSystemInfo, SYSTEM_INFO};
+use std::ptr;
+
 pub mod bindings {
     include!("./bindings.rs");
 }
@@ -54,6 +66,41 @@ pub enum Type {
     Array,
     U32Array,
     F32Array,
+}
+
+
+#[cfg(windows)]
+unsafe fn make_memory_executable(start: *mut u8, size: usize) -> bool {
+    let mut old_protect: u32 = 0;
+    let result = VirtualProtect(start as *mut _, size, PAGE_EXECUTE_READWRITE, &mut old_protect);
+    if result == 0 {
+        let error_code = GetLastError();
+        eprintln!("Failed to make memory executable: Error code {}", error_code);
+        return false;
+    }
+    true
+}
+
+#[cfg(windows)]
+fn get_page_size() -> usize {
+    unsafe {
+        let mut system_info: SYSTEM_INFO = std::mem::zeroed();
+        GetSystemInfo(&mut system_info);
+        system_info.dwPageSize as usize
+    }
+}
+
+#[cfg(windows)]
+fn align_to_page(ptr: usize, page_size: usize) -> usize {
+    let page_mask = page_size - 1;
+    ptr & !page_mask
+}
+
+#[cfg(windows)]
+fn calculate_aligned_size(original_ptr: usize, original_size: usize, page_size: usize) -> usize {
+    let start = align_to_page(original_ptr, page_size);
+    let end = align_to_page(original_ptr + original_size - 1, page_size);
+    end + page_size - start
 }
 
 // Generic function to iterate over an ecs_vector_t
@@ -999,7 +1046,19 @@ pub unsafe extern "C" fn query_trampoline(iter: *mut ecs_iter_t) {
     if raw_callback.is_null() {
         return;
     }
-    let callback = &*raw_callback; // Convert raw pointer to reference instead of Box so memory is borrowed and does
+    let callback = *raw_callback; // Convert raw pointer to reference instead of Box so memory is borrowed and does
+
+    #[cfg(windows)] {
+        let ptr = callback as *const () as usize;
+        let page_size = get_page_size();
+        let aligned_ptr = align_to_page(ptr, page_size);
+        let size = calculate_aligned_size(ptr, 4096, page_size);  // assuming you know the code size
+        let result = make_memory_executable(aligned_ptr as *mut u8, 4096);
+        if !result {
+            eprintln!("Failed to change memory permissions.");
+        }
+    }
+    
     // not get freed when it goes out of scope
     // Wrap the system / query iterator in a Rust struct with convenience methods
     let iter = toxoid_api::Iter::from(iter as *mut c_void);
